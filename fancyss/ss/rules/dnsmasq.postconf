@@ -103,9 +103,8 @@ use_frn_plan(){
 }
 
 if [ "${ss_basic_advdns}" != "1" ]; then
-	if [ "${ss_basic_mode}" == "1" -a -z "${chn_on}" -a -z "${all_on}" ] || [ "$ss_basic_mode" == "6" ];then
+	if [ "${ss_basic_mode}" == "1" -a -z "${chn_on}" -a -z "${all_on}" ] ;then
 		# gfwlist模式的时候，且访问控制主机中不存在 大陆白名单模式 游戏模式 全局模式，则使用国内优先模式
-		# 回国模式下自动判断使用国内优先
 		perpare
 		use_chn_plan
 	else
