@@ -3048,6 +3048,7 @@ create_dnsmasq_conf() {
 				dbus set ss_china_dns="3"
 			fi
 		fi
+		CDN=$(get_dns_china ${ss_china_dns} ${ss_china_dns_user})
 		DNSC_PORT=$(get_dns_china_port ${ss_china_dns})
 	else
 		# 出国代理模式下，CDN定义
