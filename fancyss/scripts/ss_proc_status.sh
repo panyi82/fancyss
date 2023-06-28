@@ -4,6 +4,10 @@
 
 source /koolshare/scripts/ss_base.sh
 
+run(){
+	env -i PATH=${PATH} "$@"
+}
+
 GET_MODE_NAME() {
 	case "${ss_basic_mode}" in
 	1)
@@ -459,7 +463,7 @@ GET_PROG_STAT(){
 							echo "smartdns	未运行🔴		中国1:UDP查询"
 						fi
 					else
-						if [ "${ss_basic_chng_china_1_ecs}" == "1" ];then
+						if [ "${ss_basic_chng_china_1_ecs}" == "1" -a "${ss_basic_nochnipcheck}" != "1" ];then
 							local DEF1=$(ps | grep "dns-ecs-forcer" | grep "051 " | awk '{print $1}')
 							if [ -n "${DEF1}" ];then
 								echo "dns-ecs-forcer	运行中🟢		中国1:ECS	${DEF1}"
@@ -476,7 +480,7 @@ GET_PROG_STAT(){
 					else
 						echo "dns2tcp		未运行🔴		中国1:TCP查询"
 					fi
-					if [ "${ss_basic_chng_china_1_ecs}" == "1" ];then
+					if [ "${ss_basic_chng_china_1_ecs}" == "1"  -a "${ss_basic_nochnipcheck}" != "1" ];then
 						local DEF1=$(ps | grep "dns-ecs-forcer" | grep "051 " | awk '{print $1}')
 						if [ -n "${DEF1}" ];then
 							echo "dns-ecs-forcer	运行中🟢		中国1:ECS	${DEF1}"
@@ -498,7 +502,7 @@ GET_PROG_STAT(){
 			# 中国DNS-2
 			if [ "${ss_basic_chng_china_2_enable}" == "1" ];then
 				if [ "${ss_basic_chng_china_2_prot}" == "1" ];then
-					if [ "${ss_basic_chng_china_2_ecs}" == "1" ];then
+					if [ "${ss_basic_chng_china_2_ecs}" == "1" -a "${ss_basic_nochnipcheck}" != "1" ];then
 						local DEF2=$(ps | grep "dns-ecs-forcer" | grep "052 " | awk '{print $1}')
 						if [ -n "${DEF2}" ];then
 							echo "dns-ecs-forcer	运行中🟢		中国2:ECS	${DEF2}"
@@ -513,7 +517,7 @@ GET_PROG_STAT(){
 					else
 						echo "dns2tcp		未运行🔴		中国2:TCP查询"
 					fi
-					if [ "${ss_basic_chng_china_2_ecs}" == "1" ];then
+					if [ "${ss_basic_chng_china_2_ecs}" == "1" -a "${ss_basic_nochnipcheck}" != "1" ];then
 						local DEF2=$(ps | grep "dns-ecs-forcer" | grep "052 " | awk '{print $1}')
 						if [ -n "${DEF2}" ];then
 							echo "dns-ecs-forcer	运行中🟢		中国2:ECS	${DEF2}"
@@ -562,7 +566,7 @@ GET_PROG_STAT(){
 						fi
 					fi
 
-					if [ "${ss_basic_chng_trust_1_ecs}" == "1" ];then
+					if [ "${ss_basic_chng_trust_1_ecs}" == "1" -a "${ss_basic_nofrnipcheck}" != "1" ];then
 						local DEF3=$(ps | grep "dns-ecs-forcer" | grep "055 " | awk '{print $1}')
 						if [ -n "${DEF3}" ];then
 							echo "dns-ecs-forcer	运行中🟢		可信1:ECS	${DEF3}"
@@ -718,7 +722,7 @@ GET_PROG_STAT(){
 			# 可信DNS-2
 			if [ "${ss_basic_chng_trust_2_enable}" == "1" ];then
 				if [ "${ss_basic_chng_trust_2_opt}" == "1" ];then
-					if [ "${ss_basic_chng_trust_2_ecs}" == "1" ];then
+					if [ "${ss_basic_chng_trust_2_ecs}" == "1" -a "${ss_basic_nofrnipcheck}" != "1" ];then
 						local DEF4=$(ps | grep "dns-ecs-forcer" | grep "056 " | awk '{print $1}')
 						if [ -n "${DEF4}" ];then
 							echo "dns-ecs-forcer	运行中🟢		可信2:ECS	${DEF4}"
@@ -733,7 +737,7 @@ GET_PROG_STAT(){
 					else
 						echo "dns2tcp		未运行🔴		可信2:TCP查询"
 					fi
-					if [ "${ss_basic_chng_trust_2_ecs}" == "1" ];then
+					if [ "${ss_basic_chng_trust_2_ecs}" == "1" -a "${ss_basic_nofrnipcheck}" != "1" ];then
 						local DEF4=$(ps | grep "dns-ecs-forcer" | grep "056 " | awk '{print $1}')
 						if [ -n "${DEF4}" ];then
 							echo "dns-ecs-forcer	运行中🟢		可信2:ECS	${DEF4}"
@@ -873,46 +877,49 @@ ECHO_VERSION(){
 	echo "--------------------------------------------------------------------------------------------------------"
 	echo "程序			版本			备注"
 	if [ -x "/koolshare/bin/sslocal" ];then
-		local SSRUST_VER=$(/koolshare/bin/sslocal --version|awk '{print $NF}' 2>/dev/null)
+		local SSRUST_VER=$(run /koolshare/bin/sslocal --version|awk '{print $NF}' 2>/dev/null)
 		if [ -n "${SSRUST_VER}" ];then
-			echo "sslocal			${SSRUST_VER}		https://github.com/shadowsocks/shadowsocks-rust"
+			echo "sslocal			${SSRUST_VER}			https://github.com/shadowsocks/shadowsocks-rust"
 		fi
 	fi
-	echo "ss-redir		$(ss-redir -h|sed '/^$/d'|head -n1|awk '{print $NF}')			https://github.com/shadowsocks/shadowsocks-libev"
+	echo "ss-redir		$(run ss-redir -h|sed '/^$/d'|head -n1|awk '{print $NF}')			https://github.com/shadowsocks/shadowsocks-libev"
 	if [ -x "/koolshare/bin/ss-tunnel" ];then
-		echo "ss-tunnel		$(ss-tunnel -h|sed '/^$/d'|head -n1|awk '{print $NF}')			https://github.com/shadowsocks/shadowsocks-libev"
+		echo "ss-tunnel		$(run ss-tunnel -h|sed '/^$/d'|head -n1|awk '{print $NF}')			https://github.com/shadowsocks/shadowsocks-libev"
 	fi
-	echo "ss-local		$(ss-local -h|sed '/^$/d'|head -n1|awk '{print $NF}')			https://github.com/shadowsocks/shadowsocks-libev"
-	echo "obfs-local		$(obfs-local -h|sed '/^$/d'|head -n1|awk '{print $NF}')			https://github.com/shadowsocks/simple-obfs"
-	echo "ssr-redir		$(rss-redir -h|sed '/^$/d'|head -n1|awk '{print $2}')			https://github.com/shadowsocksrr/shadowsocksr-libev"
-	echo "ssr-local		$(rss-local -h|sed '/^$/d'|head -n1|awk '{print $2}')			https://github.com/shadowsocksrr/shadowsocksr-libev"
+	echo "ss-local		$(run ss-local -h|sed '/^$/d'|head -n1|awk '{print $NF}')			https://github.com/shadowsocks/shadowsocks-libev"
+	echo "obfs-local		$(run obfs-local -h|sed '/^$/d'|head -n1|awk '{print $NF}')			https://github.com/shadowsocks/simple-obfs"
+	echo "ssr-redir		$(run rss-redir -h|sed '/^$/d'|head -n1|awk '{print $2}')			https://github.com/shadowsocksrr/shadowsocksr-libev"
+	echo "ssr-local		$(run rss-local -h|sed '/^$/d'|head -n1|awk '{print $2}')			https://github.com/shadowsocksrr/shadowsocksr-libev"
 	if [ -x "/koolshare/bin/haproxy" ];then
 		echo "haproxy			2.1.2			http://www.haproxy.org/"
 	fi
-	echo "dns2socks		$(dns2socks /?|sed '/^$/d'|head -n1|awk '{print $2}')			https://sourceforge.net/projects/dns2socks/"
-	echo "chinadns-ng		$(chinadns-ng -V | awk '{print $2}')		https://github.com/zfl9/chinadns-ng"
-	echo "httping			$(httping -V 2>&1 | head -n1 | awk '{print $2}'|sed 's/,//g')			https://www.vanheusden.com/httping/"
+	echo "dns2socks		$(run dns2socks /?|sed '/^$/d'|head -n1|awk '{print $2}')			https://sourceforge.net/projects/dns2socks/"
+	echo "chinadns-ng		$(run chinadns-ng -V | awk '{print $2}')		https://github.com/zfl9/chinadns-ng"
+	echo "httping			$(run httping -V 2>&1 | head -n1 | awk '{print $2}'|sed 's/,//g')			https://www.vanheusden.com/httping/"
 	if [ -x "/koolshare/bin/ss-tunnel" ];then
-		echo "trojan			$(trojan -v 2>&1 | head -n1 | awk '{print $NF}')			https://github.com/trojan-gfw/trojan"
+		echo "trojan			$(run trojan -v 2>&1 | head -n1 | awk '{print $NF}')			https://github.com/trojan-gfw/trojan"
 	fi
 	if [ -x "/koolshare/bin/v2ray" ];then
-		local v2_info_all=$(v2ray -version|head -n1)
+		#local v2_info_all=$(run v2ray -version|head -n1)
+		local v2_info_all=$(run v2ray version|head -n1)
 		echo "v2ray			$(echo ${v2_info_all}|awk '{print $2}')			https://github.com/v2fly/v2ray-core"
 	fi
-	echo "xray			$(xray -version|head -n1|awk '{print $2}')			https://github.com/XTLS/Xray-core"
+	echo "xray			$(run xray -version|head -n1|awk '{print $2}')			https://github.com/XTLS/Xray-core"
 	if [ -x "/koolshare/bin/v2ray-plugin" ];then
-		echo "v2ray-plugin		$(v2ray-plugin -version|head -n1|awk '{print $2}')			https://github.com/teddysun/v2ray-plugin"
+		echo "v2ray-plugin		$(run v2ray-plugin -version|head -n1|awk '{print $2}')			https://github.com/teddysun/v2ray-plugin"
 	fi
 	if [ -x "/koolshare/bin/smartdns" ];then
-		echo "smartdns		$(smartdns -v|awk '{print $2}')		https://github.com/pymumu/smartdns"
+		echo "smartdns		$(run smartdns -v|awk '{print $2}')	https://github.com/pymumu/smartdns"
 	fi
 	if [ -x "/koolshare/bin/dohclient" ];then
-		echo "dohclient		$(dohclient -V|awk '{print $2}')		https://github.com/GangZhuo/dohclient"
+		echo "dohclient		$(run dohclient -V|awk '{print $2}')		https://github.com/GangZhuo/dohclient"
 	fi
 	if [ -x "/koolshare/bin/kcptun" ];then
-		echo "kcptun			$(kcptun -v | awk '{print $NF}')		https://github.com/xtaci/kcptun"
+		echo "kcptun			$(run kcptun -v | awk '{print $NF}')		https://github.com/xtaci/kcptun"
 	fi
-
+	if [ -x "/koolshare/bin/naive" ];then
+		echo "naive			$(run naive --version|awk '{print $NF}')		https://github.com/klzgrad/naiveproxy"
+	fi
 	echo --------------------------------------------------------------------------------------------------------
 }
 
@@ -931,6 +938,11 @@ ECHO_IPTABLES(){
 	echo "----------------------------------------------------- nat表 SHADOWSOCKS_EXT 链 --------------------------------------------------"
 	iptables -nvL SHADOWSOCKS_EXT -t nat
 	echo
+	if [ "${ss_basic_dns_hijack}" == "1" ];then
+		echo "----------------------------------------------------- nat表 SHADOWSOCKS_DNS 链 --------------------------------------------------"
+		iptables -nvL SHADOWSOCKS_DNS -t nat
+		echo
+	fi
 	if [ "${ss_basic_mode}" == "1" -o -n "${gfw_on}" ];then
 		echo "----------------------------------------------------- nat表 SHADOWSOCKS_GFW 链 --------------------------------------------------"
 		iptables -nvL SHADOWSOCKS_GFW -t nat
@@ -973,8 +985,6 @@ ECHO_IPTABLES(){
 check_status() {
 	local LINUX_VER=$(uname -r|awk -F"." '{print $1$2}')
 	local CURR_NAME=$(cat /koolshare/webs/Module_shadowsocks.asp | grep -Eo "pkg_name=.+"|grep -Eo "fancyss\w+")
-	local CURR_ARCH=$(echo ${CURR_NAME} | awk -F"_" '{print $2}')
-	local CURR_TYPE=$(echo ${CURR_NAME} | awk -F"_" '{print $3}')
 	local CURR_VERS=$(cat /koolshare/ss/version)
 	local CURR_BAKD=$(echo ${ss_wan_black_domain} | base64_decode | sed '/^#/d' | sed 's/$/\n/' | sed '/^$/d' | wc -l)
 	local CURR_BAKI=$(echo ${ss_wan_black_ip} | base64_decode | sed '/^#/d' | sed 's/$/\n/' | sed '/^$/d' | wc -l)
@@ -982,15 +992,15 @@ check_status() {
 	local CURR_WHTI=$(echo ${ss_wan_white_ip} | base64_decode | sed '/^#/d' | sed 's/$/\n/' | sed '/^$/d' | wc -l)
 	local CURR_SUBS=$(echo ${ss_online_links} | base64_decode | grep -E "^http|^https" | wc -l)
 	local CURR_NODE=$(dbus list ssconf | grep "_name_" | wc -l)
-	local GFWVERSIN=$(cat /koolshare/ss/rules/rules.json.js|jq -r '.gfwlist.date')
-	local CHNVERSIN=$(cat /koolshare/ss/rules/rules.json.js|jq -r '.chnroute.date')
-	local CDNVERSIN=$(cat /koolshare/ss/rules/rules.json.js|jq -r '.cdn_china.date')
+	local GFWVERSIN=$(cat /koolshare/ss/rules/rules.json.js|run jq -r '.gfwlist.date')
+	local CHNVERSIN=$(cat /koolshare/ss/rules/rules.json.js|run jq -r '.chnroute.date')
+	local CDNVERSIN=$(cat /koolshare/ss/rules/rules.json.js|run jq -r '.cdn_china.date')
 
 	echo "🟠 路由型号：$(GET_MODEL)"
 	echo "🟠 固件类型：$(GET_FW_TYPE)"
 	echo "🟠 固件版本：$(GET_FW_VER)"
 	echo "🟠 路由时间：$(TZ=UTC-8 date -R "+%Y-%m-%d %H:%M:%S")"
-	echo "🟠 插件版本：fancyss_${CURR_ARCH}_${CURR_TYPE} ${CURR_VERS}"
+	echo "🟠 插件版本：${CURR_NAME} ${CURR_VERS}"
 	echo "🟠 代理模式：$(GET_MODE_NAME)"
 	echo "🟠 当前节点：$(GET_CURRENT_NODE_NAME)"
 	echo "🟠 节点类型：$(GET_CURRENT_NODE_TYPE)"

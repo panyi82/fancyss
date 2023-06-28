@@ -66,27 +66,44 @@ platform_test(){
 		if [ "${LINUX_VER}" == "26" ];then
 			if [ "${ROT_ARCH}" == "armv7l" ];then
 				# ok
-				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_arm_${PKG_TYPE}！"
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_${PKG_ARCH}_${PKG_TYPE}！"
 			else
 				# maybe mipsel, RT-AC66U... 
-				echo_date "架构：${ROT_ARCH}，fancyss_arm_${PKG_TYPE}不适用于该架构！退出！"
+				echo_date "架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该架构！退出！"
 				exit_install 1
 			fi
 		elif [ "${LINUX_VER}" == "41" -o "${LINUX_VER}" == "419" ];then
-			# RT-AC86U, RT-AX86U, RT-AX56U, GT-AX6000, XT12...
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_arm_${PKG_TYPE}不适用于该内核版本！"
-			echo_date "建议使用fancyss_hnd_full或者fancyss_hnd_lite！"
-			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
-			exit_install 1
+			if [ "${ROT_ARCH}" == "armv7l" ];then
+				# RT-AX56U RT-AX56U_V2 TUF-AX3000 TUF-AX3000_V2 TUF-AX5400 TUF-AX5400_V2 XT8
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+				echo_date "建议使用fancyss_hnd_full或者fancyss_hnd_lite！"
+				echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
+				exit_install 1
+			elif  [ "${ROT_ARCH}" == "aarch64" ];then
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+				echo_date "建议使用fancyss_hnd_v8_full或者fancyss_hnd_v8_lite！"
+				echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
+				exit_install 1
+			else
+				# no such model, yet.
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该架构！退出！"
+				exit_install 1
+			fi
 		elif [ "${LINUX_VER}" == "44" ];then
 			# RT-AX89X
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_arm_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
 			echo_date "建议使用fancyss_qca_full或者fancyss_qca_lite！"		
 			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_qca"
 			exit_install 1
+		elif [ "${LINUX_VER}" == "54" ];then
+			# mediatek TX-AX6000
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "建议使用fancyss_mtk_full或者fancyss_mtk_lite！"		
+			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_mtk"
+			exit_install 1
 		else
 			# future model
-			echo_date "内核：${KEL_VERS}，fancyss_arm_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "内核：${KEL_VERS}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
 			exit_install 1
 		fi
 	fi
@@ -95,56 +112,168 @@ platform_test(){
 	if [ "${PKG_ARCH}" == "hnd" ];then
 		if [ "${LINUX_VER}" == "41" -o "${LINUX_VER}" == "419" ];then
 			if [ "${ROT_ARCH}" == "armv7l" ];then
-				# RT-AX56U, XT8, TUF-AX3000_V2
-				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_hnd_${PKG_TYPE}！"
+				# RT-AX56U RT-AX56U_V2 TUF-AX3000 TUF-AX3000_V2 TUF-AX5400 TUF-AX5400_V2 XT8
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_${PKG_ARCH}_${PKG_TYPE}！"
 			elif  [ "${ROT_ARCH}" == "aarch64" ];then
 				# RT-AX86U, RT-AX88U
-				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_hnd_${PKG_TYPE}！"
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_${PKG_ARCH}_${PKG_TYPE}！"
+				echo_date
+				echo_date "----------------------------------------------------------------------"
+				echo_date "你的机型是${ROT_ARCH}架构，当前使用的是32位版本的fancyss！"
+				echo_date "建议使用64位的fancyss，如fancyss_hnd_v8_full或者fancyss_hnd_v8_lite！"
+				echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd_v8"
+				echo_date "----------------------------------------------------------------------"
+				echo_date
+				echo_date "继续安装32位的fancyss_${PKG_ARCH}_${PKG_TYPE}！"
 			else
 				# no such model, yet.
-				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_hnd_${PKG_TYPE}不适用于该架构！退出！"
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该架构！退出！"
 				exit_install 1
 			fi
 		elif [ "${LINUX_VER}" == "26" ];then
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_hnd_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
 			echo_date "建议使用fancyss_arm_full或者fancyss_arm_lite！"
 			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_arm"
 			exit_install 1
-			
 		elif [ "${LINUX_VER}" == "44" ];then
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_hnd_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
 			echo_date "建议使用fancyss_qca_full或者fancyss_qca_lite！"
 			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_qca"
 			exit_install 1
-			
+		elif [ "${LINUX_VER}" == "54" ];then
+			# mediatek TX-AX6000
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_arm_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "建议使用fancyss_mtk_full或者fancyss_mtk_lite！"		
+			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_mtk"
+			exit_install 1
 		else
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_hnd_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
 			exit_install 1
 		fi
 	fi
-	
+
+	# fancyss_hnd_v8
+	if [ "${PKG_ARCH}" == "hnd_v8" ];then
+		if [ "${LINUX_VER}" == "41" -o "${LINUX_VER}" == "419" ];then
+			if [ "${ROT_ARCH}" == "armv7l" ];then
+				# RT-AX56U RT-AX56U_V2 TUF-AX3000 TUF-AX3000_V2 TUF-AX5400 TUF-AX5400_V2 XT8
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该架构！"
+				echo_date "原因：无法在32位的路由器上使用64位程序的fancyss_${PKG_ARCH}_${PKG_TYPE}！"
+				echo_date "建议使用fancyss_hnd_full或者fancyss_hnd_lite！"
+				echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
+				echo_date "退出安装！"
+				exit_install 1
+			elif  [ "${ROT_ARCH}" == "aarch64" ];then
+				# RT-AX86U, RT-AX88U
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_${PKG_ARCH}_${PKG_TYPE}！"
+			else
+				# no such model, yet.
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该架构！退出！"
+				exit_install 1
+			fi
+		elif [ "${LINUX_VER}" == "26" ];then
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "建议使用fancyss_arm_full或者fancyss_arm_lite！"
+			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_arm"
+			exit_install 1
+		elif [ "${LINUX_VER}" == "44" ];then
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "建议使用fancyss_qca_full或者fancyss_qca_lite！"
+			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_qca"
+			exit_install 1
+		elif [ "${LINUX_VER}" == "54" ];then
+			# mediatek TX-AX6000
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_arm_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "建议使用fancyss_mtk_full或者fancyss_mtk_lite！"		
+			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_mtk"
+			exit_install 1
+		else
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+			exit_install 1
+		fi
+	fi
+
 	# fancyss_qca
 	if [ "${PKG_ARCH}" == "qca" ];then
 		if [ "${LINUX_VER}" == "44" ];then
 			# RT-AX89X
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_qca_${PKG_TYPE}！"
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_${PKG_ARCH}_${PKG_TYPE}！"
 		elif [ "${LINUX_VER}" == "26" ];then
 			# RT-AC68U, RT-AC88U, RT-AC3100, RT-AC5300
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_qca_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
 			echo_date "建议使用fancyss_arm_full或者fancyss_arm_lite！"
 			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_arm"
 			exit_install 1
 			
 		elif [ "${LINUX_VER}" == "41" -o "${LINUX_VER}" == "419" ];then
-			# RT-AC86U, RT-AX86U, RT-AX56U, GT-AX6000, XT12...
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_qca_${PKG_TYPE}不适用于该内核版本！"
-			echo_date "建议使用fancyss_hnd_full或者fancyss_hnd_lite！"
-			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
+			if [ "${ROT_ARCH}" == "armv7l" ];then
+				# RT-AX56U RT-AX56U_V2 TUF-AX3000 TUF-AX3000_V2 TUF-AX5400 TUF-AX5400_V2 XT8
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+				echo_date "建议使用fancyss_hnd_full或者fancyss_hnd_lite！"
+				echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
+				exit_install 1
+			elif  [ "${ROT_ARCH}" == "aarch64" ];then
+				# RT-AC86U, RT-AX86U, RT-AX56U, GT-AX6000, XT12...
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+				echo_date "建议使用fancyss_hnd_v8_full或者fancyss_hnd_v8_lite！"
+				echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
+				exit_install 1
+			else
+				# no such model, yet.
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该架构！退出！"
+				exit_install 1
+			fi
+		elif [ "${LINUX_VER}" == "54" ];then
+			# mediatek TX-AX6000
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "建议使用fancyss_mtk_full或者fancyss_mtk_lite！"		
+			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_mtk"
 			exit_install 1
-			
 		else
 			# no such model, yet.
-			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_qca_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+			exit_install 1
+		fi
+	fi
+
+	# fancyss_mtk
+	if [ "${PKG_ARCH}" == "mtk" ];then
+		if [ "${LINUX_VER}" == "54" ];then
+			# MTK,tx-ax6000 tuf-ax4200
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，安装fancyss_${PKG_ARCH}_${PKG_TYPE}！"
+		elif [ "${LINUX_VER}" == "26" ];then
+			# RT-AC68U, RT-AC88U, RT-AC3100, RT-AC5300
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "建议使用fancyss_arm_full或者fancyss_arm_lite！"
+			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_arm"
+			exit_install 1
+			
+		elif [ "${LINUX_VER}" == "41" -o "${LINUX_VER}" == "419" ];then
+			if [ "${ROT_ARCH}" == "armv7l" ];then
+				# RT-AX56U RT-AX56U_V2 TUF-AX3000 TUF-AX3000_V2 TUF-AX5400 TUF-AX5400_V2 XT8
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+				echo_date "建议使用fancyss_hnd_full或者fancyss_hnd_lite！"
+				echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
+				exit_install 1
+			elif  [ "${ROT_ARCH}" == "aarch64" ];then
+				# RT-AC86U, RT-AX86U, RT-AX56U, GT-AX6000, XT12...
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
+				echo_date "建议使用fancyss_hnd_v8_full或者fancyss_hnd_v8_lite！"
+				echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_hnd"
+				exit_install 1
+			else
+				# no such model, yet.
+				echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该架构！退出！"
+				exit_install 1
+			fi
+		elif [ "${LINUX_VER}" == "44" ];then
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_hnd_${PKG_TYPE}不适用于该内核版本！"
+			echo_date "建议使用fancyss_qca_full或者fancyss_qca_lite！"
+			echo_date "下载地址：https://github.com/hq450/fancyss_history_package/tree/master/fancyss_qca"
+			exit_install 1
+		else
+			# no such model, yet.
+			echo_date "内核：${KEL_VERS}，架构：${ROT_ARCH}，fancyss_${PKG_ARCH}_${PKG_TYPE}不适用于该内核版本！"
 			exit_install 1
 		fi
 	fi
@@ -153,15 +282,19 @@ platform_test(){
 set_skin(){
 	local UI_TYPE=ASUSWRT
 	local SC_SKIN=$(nvram get sc_skin)
-	local ROG_FLAG=$(grep -o "680516" /www/form_style.css|head -n1)
-	local TUF_FLAG=$(grep -o "D0982C" /www/form_style.css|head -n1)
+	local ROG_FLAG=$(grep -o "680516" /www/form_style.css 2>/dev/null|head -n1)
+	local TUF_FLAG=$(grep -o "D0982C" /www/form_style.css 2>/dev/null|head -n1)
+	local TS_FLAG=$(grep -o "2ED9C3" /www/css/difference.css 2>/dev/null|head -n1)
 	if [ -n "${ROG_FLAG}" ];then
 		UI_TYPE="ROG"
 	fi
 	if [ -n "${TUF_FLAG}" ];then
 		UI_TYPE="TUF"
 	fi
-	
+	if [ -n "${TS_FLAG}" ];then
+		UI_TYPE="TS"
+	fi
+
 	if [ -z "${SC_SKIN}" -o "${SC_SKIN}" != "${UI_TYPE}" ];then
 		echo_date "安装${UI_TYPE}皮肤！"
 		nvram set sc_skin="${UI_TYPE}"
@@ -221,12 +354,10 @@ install_now(){
 	rm -rf /koolshare/bin/rss-local
 	rm -rf /koolshare/bin/obfs-local
 	rm -rf /koolshare/bin/haproxy
-	rm -rf /koolshare/bin/dnscrypt-proxy
 	rm -rf /koolshare/bin/dns2socks
 	rm -rf /koolshare/bin/kcptun
 	rm -rf /koolshare/bin/chinadns-ng
 	rm -rf /koolshare/bin/smartdns
-	rm -rf /koolshare/bin/resolveip
 	rm -rf /koolshare/bin/speederv1
 	rm -rf /koolshare/bin/speederv2
 	rm -rf /koolshare/bin/udp2raw
@@ -236,8 +367,8 @@ install_now(){
 	rm -rf /koolshare/bin/v2ray-plugin
 	rm -rf /koolshare/bin/httping
 	rm -rf /koolshare/bin/haveged
-	rm -rf /koolshare/bin/ipt2socks
 	rm -rf /koolshare/bin/naive
+	rm -rf /koolshare/bin/ipt2socks
 	rm -rf /koolshare/bin/dnsclient
 	rm -rf /koolshare/bin/dohclient
 	rm -rf /koolshare/bin/dohclient-cache
@@ -245,21 +376,24 @@ install_now(){
 	rm -rf /koolshare/bin/dns-ecs-forcer
 	rm -rf /koolshare/bin/uredir
 	rm -rf /koolshare/res/icon-shadowsocks.png
+	rm -rf /koolshare/res/arrow-down.gif
+	rm -rf /koolshare/res/arrow-up.gif
 	rm -rf /koolshare/res/ss-menu.js
 	rm -rf /koolshare/res/qrcode.js
 	rm -rf /koolshare/res/tablednd.js
-	rm -rf /koolshare/res/all.png
-	rm -rf /koolshare/res/gfw.png
-	rm -rf /koolshare/res/chn.png
-	rm -rf /koolshare/res/game.png
+
 	rm -rf /koolshare/res/shadowsocks.css
-	find /koolshare/init.d/ -name "*shadowsocks.sh" | xargs rm -rf >/dev/null 2>&1
-	find /koolshare/init.d/ -name "*socks5.sh" | xargs rm -rf >/dev/null 2>&1
+	find /koolshare/init.d/ -name "*shadowsocks.sh" | xargs rm -rf
+	find /koolshare/init.d/ -name "*socks5.sh" | xargs rm -rf
+
+	# optional file maybe exist should be removed
+	# rm -rf /koolshare/bin/sslocal
+	# rm -rf /koolshare/bin/dig
 
 	# legacy files should be removed
-	rm -rf /koolshare/bin/v2ctl >/dev/null 2>&1
-	rm -rf /koolshare/bin/dnsmasq >/dev/null 2>&1
-	rm -rf /koolshare/bin/Pcap_DNSProxy >/dev/null 2>&1
+	rm -rf /koolshare/bin/v2ctl
+	rm -rf /koolshare/bin/dnsmasq
+	rm -rf /koolshare/bin/Pcap_DNSProxy
 	rm -rf /koolshare/bin/client_linux_arm*
 	rm -rf /koolshare/bin/cdns
 	rm -rf /koolshare/bin/chinadns
@@ -267,10 +401,12 @@ install_now(){
 	rm -rf /koolshare/bin/https_dns_proxy
 	rm -rf /koolshare/bin/pdu
 	rm -rf /koolshare/bin/koolgame
-
-	# optional files should keep
-	# rm -rf /koolshare/bin/sslocal >/dev/null 2>&1
-	# rm -rf /koolshare/bin/dig >/dev/null 2>&1
+	rm -rf /koolshare/bin/dnscrypt-proxy
+	rm -rf /koolshare/bin/resolveip
+	rm -rf /koolshare/res/all.png
+	rm -rf /koolshare/res/gfw.png
+	rm -rf /koolshare/res/chn.png
+	rm -rf /koolshare/res/game.png
 
 	# these file maybe used by others plugin, do not remove
 	# rm -rf /koolshare/bin/sponge >/dev/null 2>&1

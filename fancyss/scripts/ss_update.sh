@@ -10,27 +10,22 @@ main_url="https://raw.githubusercontent.com/hq450/fancyss/3.0/packages"
 # --------------------------------------
 # 6.x.4708			2.6.36.4		arm
 # 7.14.114.x		2.6.36.4		arm
-# hnd				4.1.27			hnd
-# axhnd 			4.1.51			hnd
-# axhnd.675x 		4.1.52			hnd
-# p1axhnd.675x		4.1.27			hnd
-# 5.04axhnd.675x	4.19.183		hnd
+# hnd				4.1.27			hnd hnd_v8
+# axhnd 			4.1.51			hnd hnd_v8
+# axhnd.675x 		4.1.52			hnd hnd_v8
+# p1axhnd.675x		4.1.27			hnd hnd_v8
+# 5.04axhnd.675x	4.19.183		hnd hnd_v8
 # qca (RT-AX89X)	4.4.60			qca
+# mtk (TX-AX6000)	5.4.182			mtk
 # --------------------------------------
-LINUX_VER=$(uname -r|awk -F"." '{print $1$2}')
-if [ "${LINUX_VER}" -eq "41" -o "${LINUX_VER}" -eq "419" ];then
-	PLATFORM=hnd
-elif [ "${LINUX_VER}" -eq "44" ];then
-	PLATFORM=qca
-elif [ "${LINUX_VER}" -eq "26" ];then
-	PLATFORM=arm
-fi
 
-if [ ! -x "/koolshare/bin/v2ray" ];then
-	PKGTYPE=lite
-else
-	PKGTYPE=full
-fi
+run(){
+	env -i PATH=${PATH} "$@"
+}
+
+# arm hnd hnd_v8 qca mtk
+PLATFORM=$(cat /koolshare/webs/Module_shadowsocks.asp | grep -Eo "pkg_name=.+"|grep -Eo "fancyss\w+"|sed 's/_debug//g'|sed 's/fancyss_//g'|sed 's/_[a-z]\+$//g')
+PKGTYPE=$(cat /koolshare/webs/Module_shadowsocks.asp | grep -Eo "pkg_name=.+"|grep -Eo "fancyss\w+"|sed 's/_debug//g'|awk -F"_" '{print $NF}')
 MD5NAME=md5_${PLATFORM}_${PKGTYPE}
 PACKAGE=fancyss_${PLATFORM}_${PKGTYPE}
 VERSION=version.json.js
@@ -55,20 +50,20 @@ update_ss(){
 		echo "XU6J03M6"
 		exit
 	fi
-	jq --tab . /tmp/version.json.js >/dev/null 2>&1
+	run jq --tab . /tmp/version.json.js >/dev/null 2>&1
 	if [ "$?" != "0" ];then
 		echo_date "在线版本号获取错误！请检测你的网络！"
 		echo "XU6J03M6"
 		exit
 	fi
 	
-	fancyss_version_online=$(cat /tmp/version.json.js | jq -r '.version')
+	fancyss_version_online=$(cat /tmp/version.json.js | run jq -r '.version')
 	echo_date "检测到主服务器在线版本号：${fancyss_version_online}"
 	dbus set ss_basic_version_web="${fancyss_version_online}"
 	if [ "${ss_basic_version_local}" != "${fancyss_version_online}" ];then
 		echo_date "主服务器在线版本号：${fancyss_version_online} 和本地版本号：${ss_basic_version_local} 不同！"
 		cd /tmp
-		fancyss_md5_online=$(cat /tmp/version.json.js | jq -r .$MD5NAME)
+		fancyss_md5_online=$(cat /tmp/version.json.js | run jq -r .$MD5NAME)
 		echo_date "开启下载进程，从主服务器上下载更新包..."
 		echo_date "下载链接：${main_url}/${PACKAGE}.tar.gz"
 		wget -4 --no-check-certificate --timeout=5 ${main_url}/${PACKAGE}.tar.gz

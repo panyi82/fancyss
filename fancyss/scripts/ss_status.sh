@@ -13,8 +13,12 @@ eval $(dbus export ss_failover_enable)
 CHN_TEST_SITE="www.baidu.com"
 FRN_TEST_SITE="www.google.com.tw"
 
+run(){
+	env -i PATH=${PATH} "$@"
+}
+
 get_china_status(){
-	local ret0=$(httping ${CHN_TEST_SITE} -s -Z -c1 -f -t 3 2>/dev/null|sed -n '2p'|sed 's/seq=0//g'|sed 's/([0-9]\+\sbytes),\s//g')
+	local ret0=$(run httping ${CHN_TEST_SITE} -s -Z -c1 -f -t 3 2>/dev/null|sed -n '2p'|sed 's/seq=0//g'|sed 's/([0-9]\+\sbytes),\s//g')
 	local ret1=$(echo ${ret0}|sed 's/time=/⏱ /g'|sed 's/200 OK/🌎 200 OK/g'|sed 's/connected to/➡️/g')
 	[ "${ss_failover_enable}" == "1" ] && echo ${LOGTIME1} ${ret1} 🧮$1 >> ${LOGFILE_C}
 	local STATUS1=$(echo ${ret0}|grep -Eo "200 OK")
@@ -27,7 +31,7 @@ get_china_status(){
 }
 
 get_foreign_status(){
-	local ret0=$(httping ${FRN_TEST_SITE} -s -Z -c1 -f -t 3 2>/dev/null|sed -n '2p'|sed 's/seq=0//g'|sed 's/([0-9]\+\sbytes),\s//g')
+	local ret0=$(run httping ${FRN_TEST_SITE} -s -Z -c1 -f -t 3 2>/dev/null|sed -n '2p'|sed 's/seq=0//g'|sed 's/([0-9]\+\sbytes),\s//g')
 	local ret1=$(echo ${ret0}|sed 's/time=/⏱ /g'|sed 's/200 OK/🌎 200 OK/g'|sed 's/connected to/➡️/g')
 	[ "${ss_failover_enable}" == "1" ] && echo ${LOGTIME1} ${ret1} "✈️ $(dbus get ssconf_basic_name_${CURRENT})" 🧮$1 >> ${LOGFILE_F}
 	local STATUS1=$(echo ${ret0}|grep -Eo "200 OK")
@@ -38,8 +42,7 @@ get_foreign_status(){
 		log1='国外链接 【'${LOGTIME}'】 <font color='#FF0000'>X</font>'
 	fi
 }
-
-PIDC="$(ps|grep httping|grep ${CHINA_TEST_SITE}|grep -v grep)"
+PIDC="$(ps|grep httping|grep ${CHN_TEST_SITE}|grep -v grep)"
 PIDF="$(ps|grep httping|grep ${FRN_TEST_SITE}|grep -v grep)"
 [ -n "${PIDC}" ] && echo ${LOGTIME1} httping China timeout >> ${LOGFILE_C} && kill -9 ${PIDC}
 [ -n "${PIDF}" ] && echo ${LOGTIME1} httping foreign timeout "✈️ $(dbus get ssconf_basic_name_$CURRENT)" >> ${LOGFILE_F} && kill -9 ${PIDF}

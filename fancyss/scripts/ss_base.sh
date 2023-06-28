@@ -23,7 +23,7 @@ alias echo_date='echo 【$(TZ=UTC-8 date -R +%Y年%m月%d日\ %X)】:'
 # 6 naive
 
 cur_node=${ssconf_basic_node}
-base_1="type mode server port method password ss_obfs ss_obfs_host ss_v2ray ss_v2ray_opts rss_protocol rss_protocol_param rss_obfs rss_obfs_param v2ray_uuid v2ray_alterid v2ray_security v2ray_network v2ray_headtype_tcp v2ray_headtype_kcp v2ray_headtype_quic v2ray_grpc_mode v2ray_network_path v2ray_network_host v2ray_kcp_seed v2ray_network_security v2ray_network_security_ai v2ray_network_security_sni v2ray_mux_concurrency v2ray_json xray_uuid xray_encryption xray_flow xray_network xray_headtype_tcp xray_headtype_kcp xray_headtype_quic xray_grpc_mode xray_network_path xray_network_host xray_kcp_seed xray_network_security xray_network_security_ai xray_network_security_sni xray_json"
+base_1="type mode server port method password ss_obfs ss_obfs_host ss_v2ray ss_v2ray_opts rss_protocol rss_protocol_param rss_obfs rss_obfs_param v2ray_uuid v2ray_alterid v2ray_security v2ray_network v2ray_headtype_tcp v2ray_headtype_kcp v2ray_headtype_quic v2ray_grpc_mode v2ray_network_path v2ray_network_host v2ray_kcp_seed v2ray_network_security v2ray_network_security_ai v2ray_network_security_sni v2ray_mux_concurrency v2ray_json xray_uuid xray_encryption xray_flow xray_network xray_headtype_tcp xray_headtype_kcp xray_headtype_quic xray_grpc_mode xray_network_path xray_network_host xray_kcp_seed xray_network_security xray_network_security_ai xray_network_security_sni xray_fingerprint xray_show xray_publickey xray_shortid xray_spiderx xray_json"
 base_2="use_kcp v2ray_use_json v2ray_mux_enable v2ray_network_security_alpn_h2 v2ray_network_security_alpn_http xray_use_json xray_network_security_alpn_h2 xray_network_security_alpn_http trojan_ai trojan_uuid trojan_sni trojan_tfo naive_prot naive_server naive_port naive_user naive_pass"
 for config in ${base_1} ${base_2}
 do
@@ -126,6 +126,16 @@ if [ "${ss_basic_advdns}" != "1" -a "${ss_foreign_dns}" == "4" ]; then
 	fi
 fi
 
+#---------------------------
+# 20230609，119.29.29.29的tcp解析有问题，如果用户选这个，强制更换到119.28.28.28
+if [ "${ss_basic_chng_china_1_tcp}" == "5" ];then
+	ss_basic_chng_china_1_tcp="6"
+fi
+if [ "${ss_basic_chng_china_2_tcp}" == "5" ];then
+	ss_basic_chng_china_2_tcp="6"
+fi
+
+#----------------------------
 number_test(){
 	case $1 in
 		''|*[!0-9]*)
@@ -170,6 +180,7 @@ __valid_port() {
 }
 
 detect_running_status(){
+	[ "${ss_basic_noruncheck}" == "1" ] && return
 	local BINNAME=$1
 	local PIDFILE=$2
 	local PID1
@@ -204,6 +215,7 @@ detect_running_status(){
 }
 
 detect_running_status2(){
+	[ "${ss_basic_noruncheck}" == "1" ] && return
 	# detect process by binary name and key word
 	local BINNAME=$1
 	local KEY=$2

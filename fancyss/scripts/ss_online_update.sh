@@ -16,6 +16,10 @@ NODES_SEQ=$(dbus list ssconf_basic_ | grep _name_ | cut -d "=" -f1 | cut -d "_" 
 NODE_INDEX=$(echo ${NODES_SEQ} | sed 's/.*[[:space:]]//')
 alias urldecode='sed "s@+@ @g;s@%@\\\\x@g" | xargs -0 printf "%b"'
 
+run(){
+	env -i PATH=${PATH} "$@"
+}
+
 # 一个节点里可能有的所有信息
 readonly PREFIX="ssconf_basic_name_
 				ssconf_basic_server_
@@ -74,6 +78,11 @@ readonly PREFIX="ssconf_basic_name_
 				ssconf_basic_xray_network_security_alpn_h2_
 				ssconf_basic_xray_network_security_alpn_http_
 				ssconf_basic_xray_network_security_sni_
+				ssconf_basic_xray_fingerprint_
+				ssconf_basic_xray_show_
+				ssconf_basic_xray_publickey_
+				ssconf_basic_xray_shortid_
+				ssconf_basic_xray_spiderx_
 				ssconf_basic_xray_json_
 				ssconf_basic_trojan_ai_
 				ssconf_basic_trojan_uuid_
@@ -364,13 +373,7 @@ decode_url_link(){
 get_ss_node(){
 	local urllink="$1"
 	local action="$2"
-	unset remarks server_raw_1 server_raw_2 server_tmp server_port_tmp server server_port encrypt_info decrypt_info encrypt_method password plugin_support obfs_para plugin_prog obfs_method obfs_host group
-	
-	remarks=$(echo "${urllink}" | awk -F"#" '{print $NF}' | urldecode | sed 's/^[[:space:]]//g')
-	echo "${remarks}" | isutf8 -q
-	if [ "$?" != "0" ];then
-		echo_date "当前节点名中存在特殊字符，节点添加后可能出现乱码！"
-	fi
+	unset remarks server_raw_1 server_raw_2 server_tmp server_port_tmp server server_port encrypt_info decrypt_info encrypt_method password plugin_support obfs_para plugin_prog obfs_method obfs_host group string_nu
 	
 	server_raw_1=$(echo "${urllink}" | sed -n 's/.\+@\(.\+:[0-9]\+\).*/\1/p')
 	if [ -n "${server_raw_1}" ];then
@@ -378,20 +381,59 @@ get_ss_node(){
 		server_port_tmp=$(echo "${server_raw_1}" | awk -F':' '{print $2}')
 	fi
 	encrypt_info=$(echo "${urllink}" | sed 's/@/|/g;s/:/|/g;s/?/|/g;s/#/|/g'|cut -d "|" -f1)
-	decrypt_info=$(decode_url_link $(echo "$encrypt_info"))
-	server_raw_2=$(echo "${decrypt_info}" | sed -n 's/.\+@\(.\+:[0-9]\+\).*/\1/p')
-	if [ -n "${server_raw_2}" ];then
-		server_tmp=$(echo "${server_raw_2}" | awk -F':' '{print $1}')
-		server_port_tmp=$(echo "${server_raw_2}" | awk -F':' '{print $2}')
+	decode_url_link "$encrypt_info" >/dev/null 2>&1
+	if [ "$?" != "0" ];then
+		# first string not base64,
+		encrypt_method=${encrypt_info}
+		password=$(echo "${urllink}" | sed 's/@/|/g;s/:/|/g;s/?/|/g;s/#/|/g'|cut -d "|" -f2)
+		remarks=$(echo "${urllink}" | awk -F"#" '{print $NF}' | urldecode | sed 's/^[[:space:]]//g')
+		echo "${remarks}" | isutf8 -q
+		if [ "$?" != "0" ];then
+			echo_date "当前节点名中存在特殊字符，节点添加后可能出现乱码！"
+		fi
+	else
+		# first string is base64
+		string_nu=$(echo "${urllink}" | sed 's/@/|/g;s/:/|/g;s/?/|/g;s/#/|/g' | sed 's/|/\n/g' | wc -l)
+		if [ "${string_nu}" -eq "1" ];then
+			# all base64
+			decrypt_info=$(decode_url_link $(echo "$encrypt_info"))
+			server_raw_2=$(echo "${decrypt_info}" | sed -n 's/.\+@\(.\+:[0-9]\+\).*/\1/p')
+			if [ -n "${server_raw_2}" ];then
+				server_tmp=$(echo "${server_raw_2}" | awk -F':' '{print $1}')
+				server_port_tmp=$(echo "${server_raw_2}" | awk -F':' '{print $2}')
+			fi
+			encrypt_method=$(echo "${decrypt_info}" | awk -F':' '{print $1}')
+			password=$(echo "${decrypt_info}" | sed 's/@/|/g;s/:/|/g;s/?/|/g;s/#/|/g' | awk -F'|' '{print $2}')
+			remarks=$(echo "${decrypt_info}" | awk -F"#" '{print $NF}' | urldecode | sed 's/^[[:space:]]//g')
+			echo "${remarks}" | isutf8 -q
+			if [ "$?" != "0" ];then
+				echo_date "当前节点名中存在特殊字符，节点添加后可能出现乱码！"
+			fi
+		elif [ "${string_nu}" -gt "1" ];then
+			# part base64
+			# ss://MjAyMi1ibGFrZTMtYWVzLTI1Ni1nY206TWtjeGJsTkJXbUpKemRvY25ERUpOSk5BUw==@39.175.1.182:26573#SGP%20SS%E6%B5%8B%E8%AF%95%E8%8A%82%E7%82%B9
+			decrypt_info=$(decode_url_link $(echo "$encrypt_info"))
+			server_raw_2=$(echo "${urllink}" | sed -n 's/.\+@\(.\+:[0-9]\+\).*/\1/p')
+			if [ -n "${server_raw_2}" ];then
+				server_tmp=$(echo "${server_raw_2}" | awk -F':' '{print $1}')
+				server_port_tmp=$(echo "${server_raw_2}" | awk -F':' '{print $2}')
+			fi
+			encrypt_method=$(echo "${decrypt_info}" | awk -F':' '{print $1}')
+			password=$(echo "${decrypt_info}" | sed 's/@/|/g;s/:/|/g;s/?/|/g;s/#/|/g' | awk -F'|' '{print $2}')
+			remarks=$(echo "${urllink}" | awk -F"#" '{print $NF}' | urldecode | sed 's/^[[:space:]]//g')
+			echo "${remarks}" | isutf8 -q
+			if [ "$?" != "0" ];then
+				echo_date "当前节点名中存在特殊字符，节点添加后可能出现乱码！"
+			fi
+		fi
 	fi
+
 	if [ -n "${server_tmp}" ];then
 		server=${server_tmp}
 	fi
 	if [ -n "${server_port_tmp}" ];then
 		server_port=${server_port_tmp}
 	fi
-	encrypt_method=$(echo "${decrypt_info}" | awk -F':' '{print $1}')
-	password=$(echo "${decrypt_info}" | sed 's/@/|/g;s/:/|/g;s/?/|/g;s/#/|/g' | awk -F'|' '{print $2}')
 	password=$(echo ${password} | base64_encode | sed 's/[[:space:]]//g')
 	plugin_support=$(echo "${urllink}"|grep -Eo "plugin=")
 	# ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNToxMjM@1.1.1.1:8388/?plugin=obfs-local%3bobfs%3dhttp%3bobfs-host%3dwww.bing.com#test_obfs-local
@@ -429,18 +471,20 @@ get_ss_node(){
 		ss_group_hash""
 	fi
 
-	#echo ------------
-	#echo remarks: ${remarks}
-	#echo server: ${server}
-	#echo server_port: ${server_port}
-	#echo encrypt_method: ${encrypt_method}
-	#echo password: ${password}
-	#echo plugin_prog: ${plugin_prog}
-	#echo ss_obfs: ${ss_obfs}
-	#echo ss_obfs_host: ${ss_obfs_host}
-	#echo ss_v2ray: ${ss_v2ray}
-	#echo ss_v2_opts: ${ss_v2_opts}
-	#echo ------------
+	# echo ------------
+	# echo encrypt_info: ${encrypt_info}
+	# echo decrypt_info: ${decrypt_info}
+	# echo remarks: ${remarks}
+	# echo server: ${server}
+	# echo server_port: ${server_port}
+	# echo encrypt_method: ${encrypt_method}
+	# echo password: ${password}
+	# echo plugin_prog: ${plugin_prog}
+	# echo ss_obfs: ${ss_obfs}
+	# echo ss_obfs_host: ${ss_obfs_host}
+	# echo ss_v2ray: ${ss_v2ray}
+	# echo ss_v2_opts: ${ss_v2_opts}
+	# echo ------------
 
 	if [ "${action}" == "1" ];then
 		if [ -n "${ss_group}" -a -n "${server}" -a -n "${remarks}" -a -n "${server_port}" -a -n "${password}" -a -n "${encrypt_method}" ]; then
@@ -1064,14 +1108,14 @@ get_vmess_node(){
 	unset v2ray_ps_tmp v2ray_remark_tmp v2ray_ps v2ray_add v2ray_port v2ray_id v2ray_aid v2ray_scy v2ray_net v2ray_type_tmp v2ray_type
 	unset v2ray_headerType_tmp v2ray_headtype_tcp v2ray_headtype_kcp v2ray_headtype_quic v2ray_grpc_mode v2ray_tls_tmp v2ray_tls v2ray_kcp_seed
 	unset v2ray_ai_tmp v2ray_ai v2ray_alpn v2ray_alpn_h2_tmp v2ray_alpn_http_tmp v2ray_alpn_h2 v2ray_alpn_http v2ray_sni v2ray_v v2ray_host v2ray_path v2ray_group v2ray_group_hash
-	local decrypt_info=$(decode_url_link ${urllink} flag | jq -c .)
+	local decrypt_info=$(decode_url_link ${urllink} flag | run jq -c .)
 	
 	# node name, could be ps/remark in sub json，必须项
-	v2ray_ps_tmp=$(echo "${decrypt_info}" | jq -r .ps | sed 's/[[:space:]]//g')
+	v2ray_ps_tmp=$(echo "${decrypt_info}" | run jq -r .ps | sed 's/[[:space:]]//g')
 	if [ "${v2ray_ps_tmp}" == "null" -o -z "${v2ray_ps_tmp}" ];then
 		v2ray_ps_tmp=""
 	fi
-	v2ray_remark_tmp=$(echo "${decrypt_info}" | jq -r .remark | sed 's/[[:space:]]//g')
+	v2ray_remark_tmp=$(echo "${decrypt_info}" | run jq -r .remark | sed 's/[[:space:]]//g')
 	if [ "${v2ray_remark_tmp}" == "null" -o -z "${v2ray_remark_tmp}" ];then
 		v2ray_remark_tmp=""
 	fi
@@ -1086,47 +1130,47 @@ get_vmess_node(){
 	fi
 	
 	# node server addr，必须项
-	v2ray_add=$(echo "${decrypt_info}" | jq -r .add | sed 's/[[:space:]]//g')
+	v2ray_add=$(echo "${decrypt_info}" | run jq -r .add | sed 's/[[:space:]]//g')
 	if [ "${v2ray_add}" == "null" -o -z "${v2ray_add}" ];then
 		v2ray_add=""
 	fi
 	
 	# node server port，必须项
-	v2ray_port=$(echo "${decrypt_info}" | jq -r .port | sed 's/[[:space:]]//g')
+	v2ray_port=$(echo "${decrypt_info}" | run jq -r .port | sed 's/[[:space:]]//g')
 	if [ "${v2ray_port}" == "null" -o -z "${v2ray_port}" ];then
 		v2ray_port=""
 	fi
 	
 	# node uuid，必须项
-	v2ray_id=$(echo "${decrypt_info}" | jq -r .id | sed 's/[[:space:]]//g')
+	v2ray_id=$(echo "${decrypt_info}" | run jq -r .id | sed 's/[[:space:]]//g')
 	if [ "${v2ray_id}" == "null" -o -z "${v2ray_id}" ];then
 		v2ray_id=""
 	fi
 	
 	# alterid，必须项，如果为空则填0好了
-	v2ray_aid=$(echo "${decrypt_info}" | jq -r .aid | sed 's/[[:space:]]//g')
+	v2ray_aid=$(echo "${decrypt_info}" | run jq -r .aid | sed 's/[[:space:]]//g')
 	if [ "${v2ray_aid}" == "null" -o -z "${v2ray_aid}" ];then
 		v2ray_aid="0"
 	fi
 
 	# 加密方式 (security)，v2ray必须字段，订阅中机场很多不提供该值，设为auto就好了
-	v2ray_scy=$(echo "${decrypt_info}" | jq -r .scy)
+	v2ray_scy=$(echo "${decrypt_info}" | run jq -r .scy)
 	if [ "${v2ray_scy}" == "null" -o -z "${v2ray_scy}" ];then
 		v2ray_scy="auto"
 	fi
 
 	# 传输协议: tcp kcp ws h2 quic grpc
-	v2ray_net=$(echo "${decrypt_info}" | jq -r .net)
+	v2ray_net=$(echo "${decrypt_info}" | run jq -r .net)
 	if [ "${v2ray_net}" == "null" -o -z "${v2ray_net}" ];then
 		v2ray_net=""
 	fi
 	
 	# 伪装类型，在tcp kcp quic中使用，grpc mode借用此字段，ws和h2中不使用
-	v2ray_type_tmp=$(echo "${decrypt_info}" | jq -r .type)
+	v2ray_type_tmp=$(echo "${decrypt_info}" | run jq -r .type)
 	if [ "${v2ray_type_tmp}" == "null" -o -z "${v2ray_type_tmp}" ];then
 		v2ray_type_tmp=""
 	fi
-	v2ray_headerType_tmp=$(echo "${decrypt_info}" | jq -r .headerType)
+	v2ray_headerType_tmp=$(echo "${decrypt_info}" | run jq -r .headerType)
 	if [ "${v2ray_headerType_tmp}" == "null" -o -z "${v2ray_headerType_tmp}" ];then
 		v2ray_headerType_tmp=""
 	fi
@@ -1184,18 +1228,18 @@ get_vmess_node(){
 		v2ray_headtype_quic=""
 		v2ray_grpc_mode=${v2ray_type}
 		if [ -z "${v2ray_grpc_mode}" ];then
-			v2ray_grpc_mode="gun"
+			v2ray_grpc_mode="multi"
 		fi
 		;;
 	esac
 
 	# 底层传输安全：none, tls
-	v2ray_tls_tmp=$(echo "${decrypt_info}" | jq -r .tls)
+	v2ray_tls_tmp=$(echo "${decrypt_info}" | run jq -r .tls)
 	if [ "${v2ray_tls_tmp}" == "tls" ];then
 		v2ray_tls="tls"
 
 		# 跳过证书验证 (AllowInsecure)，此处在底层传输安全（network_security）为tls时使用
-		v2ray_ai_tmp=$(echo "${decrypt_info}" | jq -r .verify_cert)
+		v2ray_ai_tmp=$(echo "${decrypt_info}" | run jq -r .verify_cert)
 		if [ "${v2ray_ai_tmp}" == "true" ];then
 			v2ray_ai=""
 		else
@@ -1203,7 +1247,7 @@ get_vmess_node(){
 		fi
 
 		# alpn: h2; http/1.1; h2,http/1.1，此处在底层传输安全（network_security）为tls时使用
-		v2ray_alpn=$(echo "${decrypt_info}" | jq -r .alpn)
+		v2ray_alpn=$(echo "${decrypt_info}" | run jq -r .alpn)
 		v2ray_alpn_h2_tmp=$(echo "${v2ray_alpn}" | grep "h2")
 		v2ray_alpn_http_tmp=$(echo "${v2ray_alpn}" | grep "http/1.1")
 		if [ -n "${v2ray_alpn_h2_tmp}" ];then
@@ -1218,7 +1262,7 @@ get_vmess_node(){
 		fi
 
 		# SNI, 如果空则用host替代，如果host空则空，此处在底层传输安全（network_security）为tls时使用
-		v2ray_sni=$(echo "${decrypt_info}" | jq -r .sni)
+		v2ray_sni=$(echo "${decrypt_info}" | run jq -r .sni)
 		if [ "${v2ray_sni}" == "null" -o -z "${v2ray_sni}" ];then
 			v2ray_sni=""
 		fi
@@ -1231,14 +1275,14 @@ get_vmess_node(){
 	fi
 
 	# sub version, 1 or 2
-	v2ray_v=$(echo "${decrypt_info}" | jq -r .v)
+	v2ray_v=$(echo "${decrypt_info}" | run jq -r .v)
 	if [ "${v2ray_v}" == "null" -o -z "${v2ray_v}" ];then
 		v2ray_v=""
 	fi
 
 	# v2ray host & path
-	v2ray_host=$(echo "${decrypt_info}" | jq -r .host)
-	v2ray_path=$(echo "${decrypt_info}" | jq -r .path)
+	v2ray_host=$(echo "${decrypt_info}" | run jq -r .host)
+	v2ray_path=$(echo "${decrypt_info}" | run jq -r .path)
 	if [ "${v2ray_host}" == "null" -o -z "${v2ray_host}" ];then 
 		v2ray_host=""
 	fi
@@ -1602,6 +1646,7 @@ get_vless_node(){
 	unset x_server_raw x_server x_server_port x_remarks x_uuid x_host x_path x_encryption x_type
 	unset x_headerType x_headtype_tcp x_headtype_kcp x_headtype_quic x_grpc_modex_security_tmp x_security
 	unset x_alpn x_alpn_h2_tmp x_alpn_http_tmp x_alpn_h2 x_alpn_http x_sni x_flow x_group x_group_hash x_kcp_seed
+	unset x_fp x_pbk x_sid x_spx
 
 	x_server_raw=$(echo "${decode_link}" | sed -n 's/.\+@\(.\+:[0-9]\+\).*/\1/p')
 	x_server=$(echo "${x_server_raw}" | awk -F':' '{print $1}')
@@ -1618,7 +1663,7 @@ get_vless_node(){
 	x_host=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "host" | awk -F"=" '{print $2}')
 	x_path=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "path" | awk -F"=" '{print $2}' | urldecode)
 	x_encryption=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "encryption" | awk -F"=" '{print $2}')
-	if [ -z "{x_encryption}" ];then
+	if [ -z "${x_encryption}" ];then
 		x_encryption="none"
 	fi
 	x_type=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "type" | grep -v "header" | awk -F"=" '{print $2}')
@@ -1626,6 +1671,15 @@ get_vless_node(){
 		x_type="tcp"
 	fi
 	x_headerType=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "headerType" | awk -F"=" '{print $2}')
+	x_mode=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "mode" | awk -F"=" '{print $2}')
+	x_security=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "security" | awk -F"=" '{print $2}')
+	x_serviceName=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "serviceName" | awk -F"=" '{print $2}')
+	x_sni=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "sni" | awk -F"=" '{print $2}')
+	x_flow=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "flow" | awk -F"=" '{print $2}')
+	x_fp=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "fp=" | awk -F"=" '{print $2}')
+	x_pbk=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "pbk=" | awk -F"=" '{print $2}')
+	x_sid=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "sid=" | awk -F"=" '{print $2}')
+	x_spx=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "spx=" | awk -F"=" '{print $2}')
 	case ${x_type} in
 	tcp)
 		# tcp协议设置【tcp伪装类型 (type)】
@@ -1647,12 +1701,22 @@ get_vless_node(){
 			x_headtype_kcp="none"
 		fi
 		;;
-	ws|h2)
+	ws)
 		# ws/h2协议设置【伪装域名 (host))】
 		x_headtype_tcp=""
 		x_headtype_kcp=""
 		x_headtype_quic=""
 		x_grpc_mode=""
+		;;
+	h2)
+		# ws/h2协议设置【伪装域名 (host))】
+		x_headtype_tcp=""
+		x_headtype_kcp=""
+		x_headtype_quic=""
+		x_grpc_mode=""
+		if [ -z "${x_host}" ];then
+			x_host="${x_server}"
+		fi
 		;;
 	quic)
 		# quic协议设置【quic伪装类型 (type)】
@@ -1670,8 +1734,16 @@ get_vless_node(){
 		x_headtype_kcp=""
 		x_headtype_quic=""
 		x_grpc_mode=${x_headerType}
+		x_grpc_mode_ext=${x_mode}
 		if [ -z "${x_grpc_mode}" ];then
-			x_grpc_mode="gun"
+			if [ -n "${x_grpc_mode_ext}" ];then
+				x_grpc_mode="${x_grpc_mode_ext}"
+			else
+				x_grpc_mode="gun"
+			fi
+		fi
+		if [ -n "${x_serviceName}" ];then
+			x_path="${x_serviceName}"
 		fi
 		;;
 	esac
@@ -1685,11 +1757,8 @@ get_vless_node(){
 		x_kcp_seed=${x_path}
 	fi
 
-	# 底层传输安全：none, tls, xtls
-	x_security_tmp=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "security" | awk -F"=" '{print $2}')
-	if [ "${x_security_tmp}" == "tls" -o "${x_security_tmp}" == "xtls" ];then
-		x_security="${x_security_tmp}"
-
+	# 底层传输安全：none, tls, xtls, reality
+	if [ "${x_security}" == "tls" -o "${x_security}" == "xtls" ];then
 		# alpn: h2; http/1.1; h2,http/1.1，此处在底层传输安全（network_security）为tls时使用
 		x_alpn=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "alpn" | awk -F"=" '{print $2}' | urldecode)
 		x_alpn_h2_tmp=$(echo "${x_alpn}" | grep "h2")
@@ -1704,20 +1773,16 @@ get_vless_node(){
 		else
 			x_alpn_http=""
 		fi
-
-		# SNI, 如果空则用host替代，如果host空则空，此处在底层传输安全（network_security）为tls时使用
-		x_sni=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "sni" | awk -F"=" '{print $2}')
-		x_flow=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "flow" | awk -F"=" '{print $2}')
-	else
-		x_security="none"
-		x_alpn_h2=""
-		x_alpn_http=""
-		x_sni=""
-		x_flow=""
+	elif [ "${x_security}" == "reality" ];then
+		# fingerprint, reality must have fp
+		if [ -z "${x_fp}" ];then
+			x_fp="chrome"
+		fi
+		if [ "${x_type}" != "tcp" ];then
+			x_flow=""
+		fi
 	fi
 	
-	[ -z "${x_encryption}" ] && x_encryption="none"
-
 	if [ "${action}" == "1" ];then
 		x_group=${DOMAIN_NAME}
 		x_group_hash="${x_group}_${SUB_LINK_HASH:0:4}"
@@ -1741,13 +1806,17 @@ get_vless_node(){
 	# echo security: ${x_security}
 	# echo host: ${x_host}
 	# echo sni: ${x_sni}
+	# echo fingerprint: ${x_fp}
+	# echo flow: ${x_flow}
+	# echo publicKey: ${x_pbk}
+	# echo shortId: ${x_sid}
+	# echo spiderX: ${x_spx}
 	# echo path: ${x_path}
 	# echo headerType: ${x_headerType}
 	# echo x_headtype_tcp: ${x_headtype_tcp}
 	# echo x_headtype_kcp: ${x_headtype_kcp}
 	# echo x_headtype_quic: ${x_headtype_quic}
 	# echo x_grpc_mode: ${x_grpc_mode}
-	# echo flow: ${x_flow}
 	# echo alpn: ${x_alpn}
 	# echo ------------
 	
@@ -1802,7 +1871,12 @@ add_vless_node(){
 	dbus_eset ssconf_basic_xray_network_security_alpn_h2_${NODE_INDEX} "${x_alpn_h2}"
 	dbus_eset ssconf_basic_xray_network_security_alpn_http_${NODE_INDEX} "${x_alpn_http}"
 	dbus_eset ssconf_basic_xray_network_security_sni_${NODE_INDEX} "${x_sni}"
+	dbus_eset ssconf_basic_xray_fingerprint_${NODE_INDEX} "${x_fp}"
 	dbus_eset ssconf_basic_xray_flow_${NODE_INDEX} "${x_flow}"
+	dbus_eset ssconf_basic_xray_show_${NODE_INDEX} "0"
+	dbus_eset ssconf_basic_xray_publickey_${NODE_INDEX} "${x_pbk}"
+	dbus_eset ssconf_basic_xray_shortid_${NODE_INDEX} "${x_sid}"
+	dbus_eset ssconf_basic_xray_spiderx_${NODE_INDEX} "${x_spx}"
 	dbus_eset ssconf_basic_group_${NODE_INDEX} "${x_group_hash}"
 	let addnum+=1
 }
@@ -2031,6 +2105,21 @@ update_vless_node(){
 
 			dbus_cset "ssconf_basic_xray_network_security_sni_${index}" "${x_sni}"
 			[ "$?" == "1" ] && INFO="${INFO}证书验证 "
+
+			dbus_cset "ssconf_basic_xray_fingerprint_${index}" "${x_fp}"
+			[ "$?" == "1" ] && INFO="${INFO}fingerprint "
+
+			dbus_cset "ssconf_basic_xray_flow_${index}" "${x_flow}"
+			[ "$?" == "1" ] && INFO="${INFO}flow "
+
+			dbus_cset "ssconf_basic_xray_publickey_${index}" "${x_pbk}"
+			[ "$?" == "1" ] && INFO="${INFO}publickey "
+
+			dbus_cset "ssconf_basic_xray_shortid_${index}" "${x_sid}"
+			[ "$?" == "1" ] && INFO="${INFO}shortid "
+
+			dbus_cset "ssconf_basic_xray_spiderx_${index}" "${x_spx}"
+			[ "$?" == "1" ] && INFO="${INFO}spiderx "
 
 			if [ -n "${INFO}" ]; then
 				INFO=$(echo "${INFO}" | sed 's/[[:space:]]$//' | sed 's/[[:space:]]/ + /g')
