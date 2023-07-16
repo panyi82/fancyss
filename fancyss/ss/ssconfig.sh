@@ -24,8 +24,9 @@ LINUX_VER=$(uname -r|awk -F"." '{print $1$2}')
 #-----------------------------------------------
 
 cmd() {
-	echo_date "$*" 2>&1
-	env -i PATH=${PATH} "$@" 2>/dev/null
+	# echo_date "$*" 2>&1
+	# env -i PATH=${PATH} "$@" 2>/dev/null
+	env -i PATH=${PATH} "$@" >/dev/null 2>&1 &
 }
 
 run(){
@@ -443,22 +444,22 @@ prepare_system() {
 	# 3. internet detect
 	if [ "${ss_basic_nonetcheck}" != "1" ];then
 		check_internet
-	else
-		echo_date "跳过路由器网络连通性检测..."
+	#else
+		#echo_date "跳过路由器网络连通性检测..."
 	fi
 
 	# 4. 检测路由器时间是否正确
 	if [ "${ss_basic_notimecheck}" != "1" ];then
 		check_time
-	else
-		echo_date "跳过路由器本地时间检测..."
+	#else
+		#echo_date "跳过路由器本地时间检测..."
 	fi
 
 	# 检测路由器公网出口IPV4地址
 	if [ "${ss_basic_nochnipcheck}" != "1" ];then
 		check_chn_public_ip
-	else
-		echo_date "跳过国内公网出口ip检测..."
+	#else
+		#echo_date "跳过国内公网出口ip检测..."
 	fi
 	# 6. set_ulimit
 	ulimit -n 16384
@@ -840,7 +841,7 @@ __resolve_server_domain() {
 				echo_date "尝试udp解析$(__get_type_abbr_name)服务器域名，自动选取DNS-${current}：$(__get_server_resolver ${current} udp):$(__get_server_resolver_port ${current} udp)"
 				SERVER_IP=$(run dnsclient -p $(__get_server_resolver_port ${current} udp) -t 2 -i 1 @$(__get_server_resolver ${current} udp) $1 2>/dev/null|grep -E "^IP"|head -n1|awk '{print $2}')
 				SERVER_IP=$(__valid_ip ${SERVER_IP})
-				if [ -n "${SERVER_IP}" ]; then
+				if [ -n "${SERVER_IP}" -a "${SERVER_IP}" != "127.0.0.1" ]; then
 					dbus set ss_basic_lastru=${current}
 					break
 				fi
@@ -880,7 +881,7 @@ __resolve_server_domain() {
 			echo_date "尝试udp解析$(__get_type_abbr_name)服务器域名，使用自定义DNS服务器：$(__get_server_resolver ${ss_basic_s_resolver_udp} udp):$(__get_server_resolver_port ${ss_basic_s_resolver_udp} udp)"
 			SERVER_IP=$(run dnsclient -p $(__get_server_resolver_port ${ss_basic_s_resolver_udp} udp) -t 2 -i 1 @$(__get_server_resolver ${ss_basic_s_resolver_udp} udp) $1 2>/dev/null|grep -E "^IP"|head -n1|awk '{print $2}')
 			SERVER_IP=$(__valid_ip ${SERVER_IP})
-			if [ -z "${SERVER_IP}" ]; then
+			if [ -z "${SERVER_IP}" -o "${SERVER_IP}" == "127.0.0.1" ]; then
 				echo_date "解析失败！请选择其它DNS服务器 或 其它节点域名解析方案！"
 			fi
 		else
@@ -899,7 +900,7 @@ __resolve_server_domain() {
 			echo_date "尝试udp解析$(__get_type_abbr_name)服务器域名，使用指定DNS-${ss_basic_s_resolver_udp}：$(__get_server_resolver ${ss_basic_s_resolver_udp} udp):$(__get_server_resolver_port ${ss_basic_s_resolver_udp} udp)"
 			SERVER_IP=$(run dnsclient -p $(__get_server_resolver_port ${ss_basic_s_resolver_udp} udp) -t 2 -i 1 @$(__get_server_resolver ${ss_basic_s_resolver_udp} udp) $1 2>/dev/null|grep -E "^IP"|head -n1|awk '{print $2}')
 			SERVER_IP=$(__valid_ip ${SERVER_IP})
-			if [ -z "${SERVER_IP}" ]; then
+			if [ -z "${SERVER_IP}" -o "${SERVER_IP}" == "127.0.0.1" ]; then
 				echo_date "解析失败！请选择其它DNS服务器 或 其它节点域名解析方案！"
 			fi
 		fi
@@ -948,7 +949,7 @@ __resolve_server_domain() {
 				detect_running_status2 dns2tcp 1054 slient
 				SERVER_IP=$(run dnsclient -p 1054 -t 2 -i 1 127.0.0.1 $1 2>/dev/null|grep -E "^IP"|head -n1|awk '{print $2}')
 				SERVER_IP=$(__valid_ip ${SERVER_IP})
-				if [ -n "${SERVER_IP}" ]; then
+				if [ -n "${SERVER_IP}" -a "${SERVER_IP}" != "127.0.0.1" ]; then
 					dbus set ss_basic_lastrt=${current}
 					break
 				fi
@@ -995,7 +996,7 @@ __resolve_server_domain() {
 			SERVER_IP=$(__valid_ip ${SERVER_IP})
 			local DNS2TCP_PID=$(ps | grep dns2tcp | grep -v grep | grep 1054 | awk '{print $1}')
 			kill -9 ${DNS2TCP_PID}
-			if [ -z "${SERVER_IP}" ]; then
+			if [ -z "${SERVER_IP}" -o "${SERVER_IP}" == "127.0.0.1" ]; then
 				echo_date "解析失败！请选择其它DNS服务器 或 其它节点域名解析方案！"
 			fi
 		else
@@ -1018,7 +1019,7 @@ __resolve_server_domain() {
 			SERVER_IP=$(__valid_ip ${SERVER_IP})
 			local DNS2TCP_PID=$(ps | grep dns2tcp | grep -v grep | grep 1054 | awk '{print $1}')
 			kill -9 ${DNS2TCP_PID}
-			if [ -z "${SERVER_IP}" ]; then
+			if [ -z "${SERVER_IP}" -o "${SERVER_IP}" == "127.0.0.1" ]; then
 				echo_date "解析失败！请选择其它DNS服务器 或 其它节点域名解析方案！"
 			fi
 		fi
@@ -1039,7 +1040,7 @@ __resolve_server_domain() {
 			SERVER_IP=$(run dnsclient -p 5885 -t 3 -i 1 @127.0.0.1 $1 2>/dev/null|grep -E "^IP"|head -n1|awk '{print $2}')
 			SERVER_IP=$(__valid_ip ${SERVER_IP})
 			
-			if [ -z "${SERVER_IP}" ]; then
+			if [ -z "${SERVER_IP}" -o "${SERVER_IP}" == "127.0.0.1" ]; then
 				echo_date "解析失败！请选择其它节点域名解析方案！"
 			fi
 
@@ -1091,16 +1092,21 @@ __resolve_server_domain() {
 			SERVER_IP=$(run dnsclient -p 5885 -t 5 -i 1 @127.0.0.1 $1 2>/dev/null|grep -E "^IP"|head -n1|awk '{print $2}')
 			SERVER_IP=$(__valid_ip ${SERVER_IP})
 
-			if [ -z "${SERVER_IP}" ]; then
+			if [ -z "${SERVER_IP}" -o "${SERVER_IP}" == "127.0.0.1" ]; then
 				echo_date "解析失败！请选择其它节点域名解析方案！"
 			fi
 
 	elif [ "${ss_basic_s_resolver}" == "4" ];then
-			echo_date "尝试解析$(__get_type_abbr_name)服务器域名，使用DNS方案为自定义DNS，如果无法解析，请更换DNS！"
+		echo_date "尝试解析$(__get_type_abbr_name)服务器域名，使用DNS方案为自定义DNS，如果无法解析，请更换DNS！"
 	fi
 
 	# resolve failed
 	if [ -z "${SERVER_IP}" ]; then
+		return 1
+	fi
+
+	# resolve failed
+	if [  "${SERVER_IP}" == "127.0.0.1" ]; then
 		return 1
 	fi
 	
@@ -1183,10 +1189,12 @@ kill_process() {
 	local xray_process=$(pidof xray)
 	if [ -n "$xray_process" ]; then
 		echo_date "关闭xray进程..."
-		[ -f "/koolshare/perp/xray/rc.main" ] && perpctl d xray >/dev/null 2>&1
-		rm -rf /koolshare/perp/xray
 		killall xray >/dev/null 2>&1
 		kill -9 "$xray_process" >/dev/null 2>&1
+	fi
+	if [ -d "/koolshare/perp/xray" ];then
+		perpctl d xray >/dev/null 2>&1
+		rm -rf /koolshare/perp/xray
 	fi
 
 	local trojan_process=$(pidof trojan)
@@ -1640,16 +1648,16 @@ start_ss_local() {
 	
 	if [ "${ss_basic_type}" == "1" ]; then
 		echo_date "开启ssr-local，提供socks5代理端口：23456"
-		run rss-local -l 23456 -c ${CONFIG_FILE} -u -f /var/run/sslocal1.pid
+		run_bg rss-local -l 23456 -c ${CONFIG_FILE} -u -f /var/run/sslocal1.pid
 		detect_running_status rss-local "/var/run/sslocal1.pid"
 	elif [ "${ss_basic_type}" == "0" ]; then
 		if [ "${ss_basic_rust}" == "1" -a -x "/koolshare/bin/sslocal" ];then
 			echo_date "开启sslocal (shadowsocks-rust)，提供socks5代理端口：23456"
-			run sslocal ${ARG_RUST_SOCKS} ${ARG_OBFS} -d
+			run_bg sslocal ${ARG_RUST_SOCKS} ${ARG_OBFS} -d
 			detect_running_status sslocal
 		else
 			echo_date "开启ss-local(shadowsocks-libev)，提供socks5代理端口：23456"
-			run ss-local -l 23456 -c ${CONFIG_FILE} ${ARG_OBFS} -u -f /var/run/sslocal1.pid
+			run_bg ss-local -l 23456 -c ${CONFIG_FILE} ${ARG_OBFS} -u -f /var/run/sslocal1.pid
 			detect_running_status ss-local "/var/run/sslocal1.pid"
 		fi
 	fi
@@ -2171,7 +2179,7 @@ start_dns_new(){
 			local EXT="-p ${ss_basic_chng_repeat_times}"
 		fi
 
-		# 6. 生成chinands-ng的国内DNS
+		# 6. 生成chinadns-ng的国内DNS
 		if [ "${ss_basic_chng_china_1_enable}" == "1" ];then
 			if [ -z "${ss_basic_chng_china_1_prot}" ];then
 				ss_basic_chng_china_1_prot="1"
@@ -2378,7 +2386,7 @@ start_dns_new(){
 			local CDNS="${CDNS_2}"
 		fi
 
-		# 7. 生成chinands-ng的可信DNS -1 （代理）
+		# 7. 生成chinadns-ng的可信DNS -1 （代理）
 		if [ "${ss_basic_chng_trust_1_enable}" == "1" ];then
 			if [ -z "${ss_basic_chng_trust_1_opt}" ];then
 				# use dns2socks as default
@@ -2504,7 +2512,7 @@ start_dns_new(){
 			fi
 		fi
 
-		# 8. 生成chinands-ng的可信DNS-2
+		# 8. 生成chinadns-ng的可信DNS-2
 		if [ "${ss_basic_chng_trust_2_enable}" == "1" ];then
 			# 8.0 判断
 			if [ "${ss_basic_chng_trust_2_opt}" == "1" -z "${ss_basic_chng_trust_2_opt_udp}" ];then
@@ -2636,10 +2644,44 @@ start_dns_new(){
 
 		# 9. start_chinadns-ng
 		echo_date "开启chinadns-ng，用于【国内所有网站 + 国外所有网站】的DNS解析..."
+
 		if [ "${ss_basic_chng_no_ipv6}" == "1" ];then
-			local EXT="${EXT} -N"
+			if [ "${ss_basic_chng_act}" != "1" -a "${ss_basic_chng_gt}" != "1" -a "${ss_basic_chng_mc}" != "1" ];then
+				ss_basic_chng_act="0"
+				ss_basic_chng_gt="1"
+				ss_basic_chng_mc="0"
+			fi
+			if [ "${ss_basic_chng_act}" == "1" ];then
+				local EXT="${EXT} -N act"
+			fi
+			if [ "${ss_basic_chng_gt}" == "1" ];then
+				local EXT="${EXT} -N gt"
+			fi
+			if [ "${ss_basic_chng_mc}" == "1" ];then
+				local EXT="${EXT} -N mc"
+			fi
 		fi
-		run_bg chinadns-ng ${EXT} -l 7913 -c ${CDNS} -t ${FDNS} -g /tmp/gfwlist.txt -m /tmp/cdn.txt -M
+		
+		if [ "${DNS_PLAN}" == "1" ];then
+			# match cdn.txt first, go to chn DNS;
+			# then match gfwlist.txt, go to trust DNS
+			# all domain have no match goes to chn DNS;
+			run_bg chinadns-ng ${EXT} -l 7913 -c ${CDNS} -t ${FDNS} -g /tmp/gfwlist.txt -m /tmp/cdn.txt -d chn -M
+		elif [ "${DNS_PLAN}" == "2" ];then
+			# new (less dns leak, chn cdn depends on cdn.txt)
+			# match cdn.txt first, go to chn DNS;
+			# all domain have no match goes to trust DNS;
+			# run_bg chinadns-ng ${EXT} -l 7913 -c ${CDNS} -t ${FDNS} -m /tmp/cdn.txt -d gfw
+			# ------
+			# use legacy
+			run_bg chinadns-ng ${EXT} -l 7913 -c ${CDNS} -t ${FDNS} -g /tmp/gfwlist.txt -m /tmp/cdn.txt -M
+		else
+			# legacy (better chn cdn)
+			# match cdn.txt first, go to chn DNS;
+			# then match gfwlist.txt, go to trust DNS
+			# all domain have no match goes to both chn DNS and trust DNS;
+			run_bg chinadns-ng ${EXT} -l 7913 -c ${CDNS} -t ${FDNS} -g /tmp/gfwlist.txt -m /tmp/cdn.txt -M
+		fi
 		detect_running_status chinadns-ng
 	elif [ "${ss_dns_plan}" == "2" ];then
 		# default smartdns conf
@@ -3245,7 +3287,7 @@ create_dnsmasq_conf() {
 	# 4. append black domain list, through proxy
 	local wanblackdomains=$(echo ${ss_wan_black_domain} | base64_decode)
 	if [ -n "${ss_wan_black_domain}" ]; then
-		echo_date "生成域名黑名单"
+		echo_date "生成域名黑名单！"
 		echo "# -------- for black_domain --------" >>/tmp/wblist.conf
 		for wan_black_domain in ${wanblackdomains}; do
 			detect_domain "${wan_black_domain}"
@@ -3261,7 +3303,7 @@ create_dnsmasq_conf() {
 						if [ "${ss_basic_mode}" == "6" ];then
 							echo "${wan_black_domain}" | sed "s/^/server=&\/./g" | sed "s/$/\/${ss_direct_user}/g" >>/tmp/wblist.conf
 						else
-							echo "${wan_black_domain}" | sed "s/^/server=&\/./g" | sed "s/$/\/${CDN}#${DNSC_PORT}/g" >>/tmp/wblist.conf
+							echo "${wan_black_domain}" | sed "s/^/server=&\/./g" | sed "s/$/\/127\.0\.0\.1#7913/g" >>/tmp/wblist.conf
 						fi
 					fi
 				fi
@@ -6026,8 +6068,8 @@ finish_start(){
 	if [ "${ss_basic_advdns}" == "1" ];then
 		if [ "${ss_basic_nocdnscheck}" != "1" ];then
 			check_chn_dns
-		else
-			echo_date "跳过国内DNS可用性检测..."
+		#else
+			#echo_date "跳过国内DNS可用性检测..."
 		fi
 	fi
 	
@@ -6035,16 +6077,16 @@ finish_start(){
 	if [ "${ss_basic_advdns}" == "1" -a "${ss_dns_plan}" == "1" ];then
 		if [ "${ss_basic_nofdnscheck}" != "1" ];then
 			check_chng_fdns
-		else
-			echo_date "跳过chinadns-ng可信DNS的可用性检测..."
+		#else
+			#echo_date "跳过chinadns-ng可信DNS的可用性检测..."
 		fi
 	fi
 	
 	# 3. get foreign ip
 	if [ "${ss_basic_nofrnipcheck}" != "1" ];then
 		check_frn_public_ip
-	else
-		echo_date "跳过代理出口ip检测..."
+	#else
+		#echo_date "跳过代理出口ip检测..."
 	fi
 
 	# ECS开启：
