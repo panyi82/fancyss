@@ -3399,7 +3399,7 @@ create_dnsmasq_conf() {
 			echo_date 自动判断在回国模式中使用国外优先模式，加载cdn.conf
 			start_ss_local
 			dns2socks 127.0.0.1:23456 "$CDN:$DNSC_PORT" 127.0.0.1:$DNSF_PORT >/dev/null 2>&1 &
-			cat /koolshare/ss/rules/cdn.txt | sed "s/\(apple.com\|microsoft.com\|google.com\|okii.com\)/d/g" | sed "s/^/server=&\/./g" | sed "s/$/\/&127.0.0.1#$DNSF_PORT/g" | sort | awk '{if ($0!=line) print;line=$0}' >>/tmp/cdn.conf
+			cat /koolshare/ss/rules/cdn.txt | sed "s/\(apple.com\|microsoft.com\|google.com\|dell.com\|okii.com\)/d/g" | sed "s/^/server=&\/./g" | sed "s/$/\/&127.0.0.1#$DNSF_PORT/g" | sort | awk '{if ($0!=line) print;line=$0}' >>/tmp/cdn.conf
 		else
 			if [ "${ss_basic_mode}" == "1" -a -z "${chn_on}" -a -z "${all_on}" -o "${ss_basic_mode}" == "6" ]; then
 				# gfwlist模式的时候，且访问控制主机中不存在 大陆白名单模式 游戏模式 全局模式，则使用国内优先模式
