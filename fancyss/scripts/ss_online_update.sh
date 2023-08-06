@@ -99,6 +99,8 @@ unset PWD
 # ssconf_basic_v2ray_json_
 # ssconf_basic_xray_use_json_
 # ssconf_basic_xray_uuid_
+# ssconf_basic_xray_alterid_
+# ssconf_basic_xray_prot_
 # ssconf_basic_xray_encryption_
 # ssconf_basic_xray_flow_
 # ssconf_basic_xray_network_
@@ -887,6 +889,7 @@ add_vmess_node(){
 	
 	# 传输协议: tcp kcp ws h2 quic grpc
 	v_net=$(json_query net "${decrypt_info}")
+	[ -z "${v_net}" ] && v_net="tcp"
 	
 	# 伪装类型，在tcp kcp quic中使用，grpc mode借用此字段，ws和h2中不使用
 	v_type=$(json_query type "${decrypt_info}")
@@ -1019,7 +1022,7 @@ add_vmess_node(){
 	# echo vmess_tls: ${v_tls}
 	# echo ------------------
 	
-	if [ -z "${v_ps}" -o -z "${v_add}" -o -z "${v_port}" -o -z "${v_id}" -o -z "${v_net}" ];then
+	if [ -z "${v_ps}" -o -z "${v_add}" -o -z "${v_port}" -o -z "${v_id}" ];then
 		# 丢弃无效节点
 		echo_date "🔴vmess节点：检测到一个错误节点，跳过！"
 		return 1
@@ -1089,6 +1092,9 @@ add_vless_node(){
 	fi
 	
 	x_uuid=$(echo "${decode_link}" | awk -F"@" '{print $1}')
+	if [ "${strtype}" == "vmess" ];then
+		x_aid=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "alterId" | awk -F"=" '{print $2}')
+	fi
 	x_host=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "host" | awk -F"=" '{print $2}')
 	x_path=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "path" | awk -F"=" '{print $2}' | urldecode)
 	x_encryption=$(echo "${decode_link}" | awk -F"?" '{print $2}'|sed 's/&/\n/g;s/#/\n/g' | grep "encryption" | awk -F"=" '{print $2}')
@@ -1275,11 +1281,8 @@ add_vless_node(){
 	json_add_string name "${x_remarks}"
 	json_add_string port "${x_server_port}"
 	json_add_string server "${x_server}"
-	if [ "${strtype}" == "vmess" ];then
-		json_add_string type "3"
-	else
-		json_add_string type "4"
-	fi
+	json_add_string type "4"
+	json_add_string xray_alterid "${x_aid}"
 	json_add_string xray_encryption "${x_encryption}"
 	json_add_string xray_fingerprint "${x_fp}"
 	json_add_string xray_flow "${x_flow}"
@@ -1296,6 +1299,7 @@ add_vless_node(){
 	json_add_string xray_network_security_alpn_h2 "${x_alpn_h2}"
 	json_add_string xray_network_security_alpn_http "${x_alpn_http}"
 	json_add_string xray_network_security_sni "${x_sni}"
+	json_add_string xray_prot "${strtype}"
 	json_add_string xray_publickey "${x_pbk}"
 	json_add_string xray_shortid "${x_sid}"
 	json_add_string xray_show "0"
@@ -1433,21 +1437,50 @@ dnsmasq_rule(){
 	fi
 }
 
+go_proxy(){
+	# 4. subscribe go through proxy or not
+	if [ "$(dbus get ss_basic_online_links_goss)" == "1" ]; then
+		if [ "$(get_fancyss_running_status)" == "1" ];then
+			echo_date "✈️使用当前$(get_type_name $(dbus get ssconf_basic_type_${CURR_NODE}))节点：[$(dbus get ssconf_basic_name_${CURR_NODE})]提供的网络下载..."
+			dnsmasq_rule add "${DOMAIN_NAME}"
+		else
+			echo_date "⚠️当前$(get_type_name $(dbus get ssconf_basic_type_${CURR_NODE}))节点工作异常，改用常规网络下载..."
+			dnsmasq_rule remove
+		fi
+	else
+		echo_date "⬇️使用常规网络下载..."
+		dnsmasq_rule remove
+	fi
+}
+
 download_by_curl(){
+	if [ "$(dbus get ss_basic_online_links_goss)" == "1" ]; then
+		SOCKS5_OPEN=$(netstat -nlp 2>/dev/null|grep -w "23456"|grep -Eo "ss-local|sslocal|v2ray|xray|trojan|naive|tuic")
+		if [ -n "${SOCKS5_OPEN}" ];then
+			local EXT_ARG="-x socks5h://127.0.0.1:23456"
+			echo_date "✈️使用当前$(get_type_name $(dbus get ssconf_basic_type_${CURR_NODE}))节点：[$(dbus get ssconf_basic_name_${CURR_NODE})]提供的网络下载..."
+		else
+			local EXT_ARG=""
+			echo_date "⚠️当前$(get_type_name $(dbus get ssconf_basic_type_${CURR_NODE}))节点工作异常，改用常规网络下载..."
+		fi
+	else
+		echo_date "⬇️使用常规网络下载..."
+		dnsmasq_rule remove
+	fi
 	echo_date "1️⃣使用curl下载订阅，第一次尝试下载..."
-	curl -4sSk --connect-timeout 6 "$1" 2>/dev/null >${DIR}/sub_file_encode_${SUB_LINK_HASH:0:4}.txt
+	run curl-fancyss -4sSk ${EXT_ARG} --connect-timeout 6 "$1" 2>/dev/null >${DIR}/sub_file_encode_${SUB_LINK_HASH:0:4}.txt
 	if [ "$?" == "0" ]; then
 		return 0
 	fi
 	
 	echo_date "2️⃣使用curl下载订阅失败，第二次尝试下载..."
-	curl -4sSk --connect-timeout 10 "$1" 2>/dev/null >${DIR}/sub_file_encode_${SUB_LINK_HASH:0:4}.txt
+	run curl-fancyss -4sSk ${EXT_ARG} --connect-timeout 10 "$1" 2>/dev/null >${DIR}/sub_file_encode_${SUB_LINK_HASH:0:4}.txt
 	if [ "$?" == "0" ]; then
 		return 0
 	fi
 
 	echo_date "3️⃣使用curl下载订阅失败，第三次尝试下载..."
-	curl -4sSk --connect-timeout 12 "$1" 2>/dev/null >${DIR}/sub_file_encode_${SUB_LINK_HASH:0:4}.txt
+	run curl-fancyss -4sSk ${EXT_ARG} --connect-timeout 12 "$1" 2>/dev/null >${DIR}/sub_file_encode_${SUB_LINK_HASH:0:4}.txt
 	if [ "$?" == "0" ]; then
 		return 0
 	fi	
@@ -1456,6 +1489,9 @@ download_by_curl(){
 }
 
 download_by_wget(){
+	# if go proxy or not
+	go_proxy
+	
 	if [ -n $(echo $1 | grep -E "^https") ]; then
 		local EXT_OPT="--no-check-certificate"
 	else
@@ -1484,6 +1520,7 @@ download_by_wget(){
 }
 
 download_by_aria2(){
+	go_proxy
 	echo_date "⬇️使用aria2c下载订阅..."
 	rm -rf ${DIR}/sub_file_encode_${SUB_LINK_HASH:0:4}.txt
 	/koolshare/aria2/aria2c --check-certificate=false --quiet=true -d $DIR -o ssr_subscribe_file.txt $1
@@ -1519,23 +1556,9 @@ get_online_rule_now(){
 
 	# 3. try to delete some file left by last sublink subscribe
 	rm -rf /tmp/ssr_subscribe_file* >/dev/null 2>&1
-
-	# 4. subscribe go through proxy or not
-	echo_date "📁准备下载订阅链接到本地临时文件，请稍等..."
-	if [ "$(dbus get ss_basic_online_links_goss)" == "1" ]; then
-		if [ "$(get_fancyss_running_status)" == "1" ];then
-			echo_date "✈️使用当前$(get_type_name $(dbus get ssconf_basic_type_${CURR_NODE}))节点：[$(dbus get ssconf_basic_name_${CURR_NODE})]提供的网络下载..."
-			dnsmasq_rule add "${DOMAIN_NAME}"
-		else
-			echo_date "⚠️当前$(get_type_name $(dbus get ssconf_basic_type_${CURR_NODE}))节点工作异常，改用常规网络下载..."
-			dnsmasq_rule remove
-		fi
-	else
-		echo_date "⬇️使用常规网络下载..."
-		dnsmasq_rule remove
-	fi
 	
 	# 7. download sublink
+	echo_date "📁准备下载订阅链接到本地临时文件，请稍等..."
 	download_by_curl "${SUB_LINK}"
 	if [ "$?" == "0" ]; then
 		echo_date "🆗下载成功，继续检测下载内容..."
@@ -1693,7 +1716,7 @@ get_online_rule_now(){
 			fi
 			;;
 		vless)
-			add_vless_node "${node_info}" 1
+			add_vless_node "${node_info}" 1 vless
 			;;
 		trojan)
 			add_trojan_node "${node_info}" 1
@@ -1885,20 +1908,17 @@ start_offline_update() {
 			add_ssr_node "${node_info}" 2
 			;;
 		vmess)
-			echo "${node_info}"
 			local _match=$(echo "${node_info}" | grep -E "@|\?|type")
 			if [ -n "${_match}" ];then
 				#明文的vmess链接
-				echo 123
 				add_vless_node "${node_info}" 2 vmess
 			else
 				#base64的vmess链接
-				echo 234
 				add_vmess_node "${node_info}" 2
 			fi
 			;;
 		vless)
-			add_vless_node "${node_info}" 2
+			add_vless_node "${node_info}" 2 vless
 			;;
 		trojan)
 			add_trojan_node "${node_info}" 2

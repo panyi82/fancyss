@@ -512,8 +512,6 @@ prepare_system() {
 		TCORE_NAME=trojan
 		TROJAN_CONFIG_TEMP="/tmp/trojan_nat_tmp.json"
 		TROJAN_CONFIG_FILE="/koolshare/ss/trojan.json"
-		TROJAN_CONFIG_TEMP_SOCKS="/tmp/trojan_client_tmp.json"
-		TROJAN_CONFIG_FILE_SOCKS="/koolshare/ss/trojan_client.json"
 	fi
 
 	# 12. info
@@ -650,6 +648,9 @@ __get_type_full_name() {
 	6)
 		echo "NaïvePoroxy"
 		;;
+	7)
+		echo "tuic"
+		;;
 	esac
 }
 
@@ -676,6 +677,9 @@ __get_type_abbr_name() {
 		;;
 	6)
 		echo "Naïve"
+		;;
+	7)
+		echo "tuic"
 		;;
 	esac
 }
@@ -722,7 +726,7 @@ __get_server_resolver() {
 
 	if [ "${idx}" == "99" ]; then
 		if [ "${tye}" == "tcp" ];then
-			local user_content=${ss_basic_s_resolver_udp_user}
+			local user_content=${ss_basic_s_resolver_tcp_user}
 		else
 			local user_content=${ss_basic_s_resolver_udp_user}
 		fi
@@ -810,7 +814,7 @@ __resolve_server_domain() {
 					local current=$(shuf -i 1-18 -n 1)
 				elif [ "${ss_basic_s_resolver_udp}" == "-1" ];then
 					local current=$(shuf -i 1-8 -n 1)
-				elif [ "${ss_basic_s_resolver_udp}" == "-1" ];then
+				elif [ "${ss_basic_s_resolver_udp}" == "-2" ];then
 					local current=$(shuf -i 11-18 -n 1)
 				fi
 			fi
@@ -1106,7 +1110,7 @@ __resolve_server_domain() {
 	fi
 
 	# resolve failed
-	if [  "${SERVER_IP}" == "127.0.0.1" ]; then
+	if [ "${SERVER_IP}" == "127.0.0.1" ]; then
 		return 1
 	fi
 	
@@ -1428,6 +1432,12 @@ kill_process() {
 		killall naive
 	fi
 
+	local TUIC_PID=$(ps | grep "tuic-client" | grep -v grep | awk '{print $1}')
+	if [ -n "${TUIC_PID}" ];then
+		echo_date "关闭tuic-client进程..."
+		killall tuic-client
+	fi
+
 	# close tcp_fastopen
 	if [ "${LINUX_VER}" != "26" ]; then
 		echo 1 >/proc/sys/net/ipv4/tcp_fastopen
@@ -1463,6 +1473,9 @@ resolv_server_ip() {
 		return 1
 	elif [ "${ss_basic_type}" == "4" -a "${ss_basic_xray_use_json}" == "1" ]; then
 		#xray json配置在后面单独处理
+		return 1
+	elif [ "${ss_basic_type}" == "7" ]; then
+		#tuic节点，不需要解析
 		return 1
 	else
 		# 判断服务器域名格式
@@ -1509,7 +1522,7 @@ ss_arg() {
 	fi
 
 	if [ "${ss_basic_ss_v2ray}" == "1" ]; then
-		if [ "${ss_basic_ss_obfs}" == "tls" -o "${ss_basic_ss_obfs}" == "tls" ]; then
+		if [ "${ss_basic_ss_obfs}" == "http" -o "${ss_basic_ss_obfs}" == "tls" ]; then
 			echo_date "检测到你同时开启了obfs-local和v2ray-plugin！。"
 			echo_date "插件只能支持开启一个SIP002插件！"
 			echo_date "请更正设置后重试！"
@@ -1578,7 +1591,7 @@ creat_ss_json() {
 	
 	echo_date "创建$(__get_type_abbr_name)配置文件到${CONFIG_FILE}"
 	if [ "${ss_basic_type}" == "0" ]; then
-		cat >$CONFIG_FILE <<-EOF
+		cat >${CONFIG_FILE} <<-EOF
 			{
 			    "server":"${ss_basic_server}",
 			    "server_port":${ss_basic_port},
@@ -1590,7 +1603,7 @@ creat_ss_json() {
 			}
 		EOF
 	elif [ "${ss_basic_type}" == "1" ]; then
-		cat >$CONFIG_FILE <<-EOF
+		cat >${CONFIG_FILE} <<-EOF
 			{
 			    "server":"${ss_basic_server}",
 			    "server_port":${ss_basic_port},
@@ -1656,8 +1669,18 @@ start_ss_local() {
 			run_bg sslocal ${ARG_RUST_SOCKS} ${ARG_OBFS} -d
 			detect_running_status sslocal
 		else
+			local ARG_1 ARG_2
+			if [ "${ss_basic_tfo}" == "1" -a "${LINUX_VER}" != "26" ]; then
+				local ARG_1="--fast-open"
+				echo 3 >/proc/sys/net/ipv4/tcp_fastopen
+			fi
+
+			if [ "${ss_basic_tnd}" == "1" ]; then
+				local ARG_2="--no-delay"
+			fi
+		
 			echo_date "开启ss-local(shadowsocks-libev)，提供socks5代理端口：23456"
-			run_bg ss-local -l 23456 -c ${CONFIG_FILE} ${ARG_OBFS} -u -f /var/run/sslocal1.pid
+			run_bg ss-local -l 23456 -c ${CONFIG_FILE} ${ARG_OBFS} ${ARG_1} ${ARG_2} -u -f /var/run/sslocal1.pid
 			detect_running_status ss-local "/var/run/sslocal1.pid"
 		fi
 	fi
@@ -2766,12 +2789,14 @@ start_dns_old() {
 		fi
 	fi
 
+	# 从 3.2.3开始，插件要求所有代理都开启23456端口，用于状态检测
+	start_ss_local
+
 	# 3. Start DNS2SOCKS (default)
 	if [ "${ss_foreign_dns}" == "3" -o -z "${ss_foreign_dns}" ]; then
 		if [ -z "${ss_foreign_dns}" ]; then
 			dbus set ss_foreign_dns="3"
 		fi
-		start_ss_local
 		[ "${DNS_PLAN}" == "1" ] && echo_date "开启dns2socks，用于【国外gfwlist站点】的DNS解析..."
 		[ "${DNS_PLAN}" == "2" ] && echo_date "开启dns2socks，用于【国外所有网站】的DNS解析..."
 		start_dns2socks ${ss_dns2socks_user} 7913 0
@@ -2794,7 +2819,6 @@ start_dns_old() {
 		elif [ "${ss_basic_type}" == "3" -o "${ss_basic_type}" == "4" -o "${ss_basic_type}" == "5" ]; then
 			echo_date $(__get_type_full_name ${ss_basic_type})下不支持ss-tunnel，改用dns2socks！
 			dbus set ss_foreign_dns=3
-			start_ss_local
 			[ "${DNS_PLAN}" == "1" ] && echo_date "开启dns2socks，用于【国外gfwlist站点】的DNS解析..."
 			[ "${DNS_PLAN}" == "2" ] && echo_date "开启dns2socks，用于【国外所有网站】的DNS解析..."
 			start_dns2socks ${ss_dns2socks_user} 7913 0
@@ -2810,7 +2834,6 @@ start_dns_old() {
 		else
 			echo_date "$(__get_type_full_name ${ss_basic_type})下不支持${VCORE_NAME} dns，改用dns2socks！"
 			dbus set ss_foreign_dns=3
-			start_ss_local
 			[ "${DNS_PLAN}" == "1" ] && echo_date "开启dns2socks，用于【国外gfwlist站点】的DNS解析..."
 			[ "${DNS_PLAN}" == "2" ] && echo_date "开启dns2socks，用于【国外所有网站】的DNS解析..."
 			start_dns2socks ${ss_chinadnsng_user} 7913 0
@@ -2846,7 +2869,6 @@ start_dns_old() {
 		else
 			echo_date "非回国模式，国外DNS直连解析不能使用，自动切换到dns2socks方案。"
 			dbus set ss_foreign_dns=3
-			start_ss_local
 			[ "${DNS_PLAN}" == "1" ] && echo_date "开启dns2socks，用于【国外gfwlist站点】的DNS解析..."
 			[ "${DNS_PLAN}" == "2" ] && echo_date "开启dns2socks，用于【国外所有网站】的DNS解析..."
 			start_dns2socks ${ss_dns2socks_user} 7913 0
@@ -3328,26 +3350,27 @@ create_dnsmasq_conf() {
 	#    1. 依靠dnsmasq分流的方案下，直接使用server=去指定域名需要的解析DNS即可
 	# 回国模式
 	#    走代理的除了gfw列表里其其它域名，加入有个国外用户想直连访问国内的新浪微博，那么应该用国外DNS去解析，得到和不开插件一样的解析效果
-	#local ALL_NODE_DOMAINS=$(dbus list ssconf|grep _server_|awk -F"=" '{print $NF}'|sort -u|grep -Ev "([0-9]{1,3}[\.]){3}[0-9]{1,3}")
-	local wanwhitedomains=$(echo ${ss_wan_white_domain} | base64_decode | sed '/^#/d')
-	local ALL_WHITE_DOMAINS=$(echo ${wanwhitedomains} | sed 's/[[:space:]]/\n/g' | sort -u)
-	if [ -n "${ALL_WHITE_DOMAINS}" ]; then
+	local ALL_NODE_DOMAINS=$(dbus list ssconf|grep _server_|awk -F"=" '{print $NF}'|sort -u|grep -Ev "([0-9]{1,3}[\.]){3}[0-9]{1,3}")
+	local wanwhitedomains=$(echo ${ss_wan_white_domain} | base64_decode | sed '/^#/d' | grep "." | sort -u)
+	local ALL_WHITE_DOMAINS=$(echo ${wanwhitedomains} ${ALL_NODE_DOMAINS})
+	if [ -n "${ALL_WHITE_DOMAINS} " ]; then
 		echo_date "生成域名白名单！"
 		echo "# -------- for white_domain --------" >>/tmp/wblist.conf
-		for wan_white_domain in ${ALL_WHITE_DOMAINS}; do
+		for wan_white_domain in ${ALL_WHITE_DOMAINS} ${ALL_NODE_DOMAINS}; do
 			detect_domain "${wan_white_domain}"
 			if [ "$?" == "0" ]; then
 				if [ "${ss_basic_advdns}" == "1" ];then
 					# chinadns-ng 用到cdn.txt
 					if [ "${ss_dns_plan}" == "1" -o "${ss_dns_plan}" == "2" ];then
 						# 域名白名单添加到cdn.txt，chinadns-ng需要白名单优先
-						local DOMAIN_EXIST_1=$(cat /tmp/cdn.txt | /bin/grep -Ew "^${wan_white_domain}")
-						if [ -z ${DOMAIN_EXIST_1} ];then
-							echo "${wan_white_domain}" >> /tmp/cdn.txt
-						else
-							echo_date "检测到域名白名单内的【${wan_white_domain}】已经被cdn.txt收录，跳过添加！！"
-						fi
+						# local DOMAIN_EXIST_1=$(cat /tmp/cdn.txt | /bin/grep -Ew "^${wan_white_domain}")
+						# if [ -z ${DOMAIN_EXIST_1} ];then
+						# 	echo "${wan_white_domain}" >> /tmp/cdn.txt
+						# else
+						# 	echo_date "检测到域名白名单内的【${wan_white_domain}】已经被cdn.txt收录，跳过添加！！"
+						# fi
 						# 应该从gfwlist中删除对应域名
+						echo "${wan_white_domain}" >> /tmp/cdn.txt
 						local DOMAIN_EXIST_2=$(cat /tmp/gfwlist.txt | /bin/grep -Ew "^${wan_white_domain}")
 						if [ -n ${DOMAIN_EXIST_2} ];then
 							cat /tmp/gfwlist.txt | /bin/grep -Evw "^${wan_white_domain}" | run sponge /tmp/gfwlist.txt
@@ -3747,8 +3770,7 @@ start_ss_redir() {
 }
 
 fire_redir() {
-	local ARG_1=""
-	local ARG_2=""
+	local ARG_1 ARG_2 ARG_3
 	if [ "${ss_basic_type}" == "0" -a "$ss_basic_mcore" == "1" -a "${LINUX_VER}" != "26" ];then
 		local ARG_1="--reuse-port"
 	fi
@@ -3761,8 +3783,6 @@ fire_redir() {
 	if [ "${ss_basic_type}" == "0" -a "$ss_basic_tnd" == "1" ]; then
 		echo_date "$BIN开启TCP_NODELAY支持."
 		local ARG_3="--no-delay"
-	else
-		local ARG_3=""
 	fi
 
 	if [ "$ss_basic_mcore" == "1" -a "${LINUX_VER}" != "26" ]; then
@@ -4061,6 +4081,16 @@ creat_v2ray_json() {
 						}
 					},
 					{
+						"port": 23456,
+						"listen": "0.0.0.0",
+						"protocol": "socks",
+						"settings": {
+							"auth": "noauth",
+							"udp": true,
+							"ip": "127.0.0.1"
+						}
+					},
+					{
 						"listen": "0.0.0.0",
 						"port": 3333,
 						"protocol": "dokodemo-door",
@@ -4182,6 +4212,18 @@ creat_v2ray_json() {
 											\"timeout\": 0,
 											\"followRedirect\": false
 										}
+									},
+									{
+										\"port\": 23456,
+										\"listen\": \"0.0.0.0\",
+										\"protocol\": \"socks\",
+										\"settings\": {
+											\"auth\": \"noauth\",
+											\"udp\": true,
+											\"ip\": \"127.0.0.1\",
+											\"clients\": null
+										},
+										\"streamSettings\": null
 									},
 									{
 										\"listen\": \"0.0.0.0\",
@@ -4634,6 +4676,16 @@ creat_xray_json() {
 						}
 					},
 					{
+						"port": 23456,
+						"listen": "0.0.0.0",
+						"protocol": "socks",
+						"settings": {
+							"auth": "noauth",
+							"udp": true,
+							"ip": "127.0.0.1"
+						}
+					},
+					{
 						"listen": "0.0.0.0",
 						"port": 3333,
 						"protocol": "dokodemo-door",
@@ -4671,19 +4723,22 @@ creat_xray_json() {
 			EOF
 		fi
 		# outbounds area
+		[ -z "${ss_basic_xray_alterid}" ] && ss_basic_xray_alterid="0"
+		[ -z "${ss_basic_xray_prot}" ] && ss_basic_xray_prot="vless"
 		cat >>"${XRAY_CONFIG_TEMP}" <<-EOF
 			"outbounds": [
 				{
 					"tag": "proxy",
-					"protocol": "vless",
+					"protocol": "${ss_basic_xray_prot}",
 					"settings": {
 						"vnext": [
 							{
 								"address": "${ss_basic_server}",
-								"port": $ss_basic_port,
+								"port": ${ss_basic_port},
 								"users": [
 									{
 										"id": "$ss_basic_xray_uuid"
+										,"alterId": $ss_basic_xray_alterid
 										,"security": "auto"
 										,"encryption": "$ss_basic_xray_encryption"
 										,"flow": $(get_value_null $ss_basic_xray_flow)
@@ -4716,6 +4771,9 @@ creat_xray_json() {
 		EOF
 		echo_date "解析Xray配置文件..."
 		sed -i '/null/d' ${XRAY_CONFIG_TEMP} 2>/dev/null
+		if [ "${ss_basic_xray_prot}" == "vless" ];then
+			sed -i '/alterId/d' ${XRAY_CONFIG_TEMP} 2>/dev/null
+		fi
 		if [ "${LINUX_VER}" == "26" ]; then
 			sed -i '/tcpFastOpen/d' ${XRAY_CONFIG_TEMP} 2>/dev/null
 		fi
@@ -4763,6 +4821,18 @@ creat_xray_json() {
 											\"timeout\": 0,
 											\"followRedirect\": false
 										}
+									},
+									{
+										\"port\": 23456,
+										\"listen\": \"0.0.0.0\",
+										\"protocol\": \"socks\",
+										\"settings\": {
+											\"auth\": \"noauth\",
+											\"udp\": true,
+											\"ip\": \"127.0.0.1\",
+											\"clients\": null
+										},
+										\"streamSettings\": null
 									},
 									{
 										\"listen\": \"0.0.0.0\",
@@ -4944,25 +5014,6 @@ start_xray() {
 }
 
 creat_trojan_json(){
-	# open socks5 on port 23456
-	if [ "${ss_basic_advdns}" != "1" -a "${ss_foreign_dns}" == "3" ]; then
-		trojan_socks=1
-	fi
-	if [ "${ss_basic_advdns}" == "1" -a "${ss_dns_plan}" == "1" -a "${ss_basic_chng_trust_1_opt}" == "2" ]; then
-		trojan_socks=1
-	fi
-	if [ "${ss_basic_advdns}" == "1" -a "${ss_dns_plan}" == "1" -a "${ss_basic_chng_trust_1_opt}" == "3" ]; then
-		trojan_socks=1
-	fi
-	if [ "${ss_basic_advdns}" == "1" -a "${ss_dns_plan}" == "2" ]; then
-		if [ "${ss_basic_smrt}" == "1" -o "${ss_basic_smrt}" == "3" -o "${ss_basic_smrt}" == "4" -o "${ss_basic_smrt}" == "6" -o "${ss_basic_smrt}" == "7" -o "${ss_basic_smrt}" == "8" -o "${ss_basic_smrt}" == "9" ];then
-			trojan_socks=1
-		fi
-	fi
-	if [ "${ss_basic_advdns}" == "1" -a "${ss_dns_plan}" == "3" -a "${ss_basic_dohc_proxy}" == "1" ]; then
-		trojan_socks=1
-	fi
-
 	# do not create json file on start
 	if [ -n "${WAN_ACTION}" ]; then
 		echo_date "检测到网络拨号/开机触发启动，不创建$(__get_type_abbr_name)配置文件，使用上次的配置文件！"
@@ -4974,8 +5025,7 @@ creat_trojan_json(){
 		if [ "${ss_basic_tcore}" == "1" ];then
 			echo_date "创建xray的trojan配置文件到${TROJAN_CONFIG_FILE}"
 		else
-			echo_date "创建$(__get_type_abbr_name)的配置文件到${TROJAN_CONFIG_FILE}"
-			[ "${trojan_socks}" == "1" ] && echo_date "创建$(__get_type_abbr_name)的client配置文件到${TROJAN_CONFIG_FILE_SOCKS}"
+			echo_date "创建$(__get_type_abbr_name)的client配置文件到${TROJAN_CONFIG_FILE}"
 		fi
 	fi
 
@@ -5008,6 +5058,16 @@ creat_trojan_json(){
 						}
 					},
 					{
+						"port": 23456,
+						"listen": "0.0.0.0",
+						"protocol": "socks",
+						"settings": {
+							"auth": "noauth",
+							"udp": true,
+							"ip": "127.0.0.1"
+						}
+					},
+					{
 						"listen": "0.0.0.0",
 						"port": 3333,
 						"protocol": "dokodemo-door",
@@ -5019,47 +5079,30 @@ creat_trojan_json(){
 				],
 			EOF
 		else
-			if [ "${trojan_socks}" == "1" ];then
-				# inbounds area (23456 for socks5)
-				cat >>"$TROJAN_CONFIG_TEMP" <<-EOF
-					"inbounds": [
-						{
-							"port": 23456,
-							"listen": "0.0.0.0",
-							"protocol": "socks",
-							"settings": {
-								"auth": "noauth",
-								"udp": true,
-								"ip": "127.0.0.1"
-							}
-						},
-						{
-							"listen": "0.0.0.0",
-							"port": 3333,
-							"protocol": "dokodemo-door",
-							"settings": {
-								"network": "tcp,udp",
-								"followRedirect": true
-							}
+			# inbounds area (23456 for socks5)
+			cat >>"$TROJAN_CONFIG_TEMP" <<-EOF
+				"inbounds": [
+					{
+						"port": 23456,
+						"listen": "0.0.0.0",
+						"protocol": "socks",
+						"settings": {
+							"auth": "noauth",
+							"udp": true,
+							"ip": "127.0.0.1"
 						}
-					],
-				EOF
-			else
-				# inbounds area
-				cat >>"$TROJAN_CONFIG_TEMP" <<-EOF
-					"inbounds": [
-						{
-							"listen": "0.0.0.0",
-							"port": 3333,
-							"protocol": "dokodemo-door",
-							"settings": {
-								"network": "tcp,udp",
-								"followRedirect": true
-							}
+					},
+					{
+						"listen": "0.0.0.0",
+						"port": 3333,
+						"protocol": "dokodemo-door",
+						"settings": {
+							"network": "tcp,udp",
+							"followRedirect": true
 						}
-					],
-				EOF
-			fi
+					}
+				],
+			EOF
 		fi
 		# outbounds area
 		cat >>"${TROJAN_CONFIG_TEMP}" <<-EOF
@@ -5103,14 +5146,12 @@ creat_trojan_json(){
 	else
 		rm -rf "${TROJAN_CONFIG_TEMP}"
 		rm -rf "${TROJAN_CONFIG_FILE}"
-		rm -rf "${TROJAN_CONFIG_TEMP_SOCKS}"
-		rm -rf "${TROJAN_CONFIG_FILE_SOCKS}"
 		
 		cat > "${TROJAN_CONFIG_TEMP}" <<-EOF
 			{
-				"run_type": "nat",
-				"local_addr": "0.0.0.0",
-				"local_port": 3333,
+				"run_type": "client",
+				"local_addr": "127.0.0.1",
+				"local_port": 23456,
 				"remote_addr": "${ss_basic_server}",
 				"remote_port": ${ss_basic_port},
 				"password": ["${ss_basic_trojan_uuid}"],
@@ -5130,16 +5171,15 @@ creat_trojan_json(){
 				"tcp": {
 				"no_delay": true,
 				"keep_alive": true,
+				"reuse_port": false,
 		EOF
 		if [ "${LINUX_VER}" != "26" ]; then
 			cat >> "${TROJAN_CONFIG_TEMP}" <<-EOF
-					"reuse_port": $(get_function_switch ${ss_basic_mcore}),
-					"fast_open": $(get_function_switch ${ss_basic_trojan_tfo}),
+				"fast_open": $(get_function_switch ${ss_basic_trojan_tfo}),
 			EOF
 		else
 			cat >> "${TROJAN_CONFIG_TEMP}" <<-EOF
-					"reuse_port": false,
-					"fast_open": false,
+				"fast_open": false,
 			EOF
 		fi
 		cat >> "${TROJAN_CONFIG_TEMP}" <<-EOF
@@ -5147,8 +5187,7 @@ creat_trojan_json(){
 				}
 			}
 		EOF
-		
-		echo_date "解析trojan的nat配置文件..."
+		echo_date "解析trojan的配置文件..."
 		run jq --tab . ${TROJAN_CONFIG_TEMP} >/tmp/trojan_para_tmp.txt 2>&1
 		if [ "$?" != "0" ];then
 			echo_date "json配置解析错误，错误信息如下："
@@ -5158,89 +5197,18 @@ creat_trojan_json(){
 			close_in_five flag
 		fi
 		run jq --tab . ${TROJAN_CONFIG_TEMP} >${TROJAN_CONFIG_FILE}
-		echo_date "解析成功！trojan的nat配置文件成功写入到${TROJAN_CONFIG_FILE}"
+		echo_date "解析成功！trojan的配置文件成功写入到${TROJAN_CONFIG_FILE}"
 
-		echo_date 测试trojan的nat配置文件....
+		echo_date 测试trojan的配置文件....
 		result=$(run /koolshare/bin/trojan -t ${TROJAN_CONFIG_FILE} 2>&1 | grep "The config file looks good.")
 		if [ -n "${result}" ]; then
 			echo_date 测试结果：${result}
-			echo_date trojan的nat配置文件通过测试!!!
+			echo_date trojan的配置文件通过测试!!!
 		else
-			echo_date trojan的nat配置文件没有通过测试，请检查设置!!!
+			echo_date trojan的配置文件没有通过测试，请检查设置!!!
 			rm -rf ${TROJAN_CONFIG_TEMP}
 			rm -rf ${TROJAN_CONFIG_FILE}
 			close_in_five flag
-		fi
-		
-		if [ "${trojan_socks}" == "1" ]; then
-			# 3:  dns2socks
-			# 4:  ss-tunnel    →   fall back to dns2socks
-			# 5:  chinadns1    →   use dns2socks as upstream
-			# 7:  v2ray_dns    →   fall back to dns2socks
-			# 10: chinadns-ng  →   use dns2socks as upstream
-			cat > "${TROJAN_CONFIG_TEMP_SOCKS}" <<-EOF
-				{
-					"run_type": "client",
-					"local_addr": "127.0.0.1",
-					"local_port": 23456,
-					"remote_addr": "${ss_basic_server}",
-					"remote_port": ${ss_basic_port},
-					"password": ["${ss_basic_trojan_uuid}"],
-					"log_level": 1,
-					"ssl": {
-						"verify": $(get_reverse_switch ${ss_basic_trojan_ai}),
-						"verify_hostname": true,
-						"cert": "/rom/etc/ssl/certs/ca-certificates.crt",
-						"cipher": "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:AES128-SHA:AES256-SHA:DES-CBC3-SHA",
-						"cipher_tls13": "TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384",
-						"sni": $(get_value_null ${ss_basic_trojan_sni}),
-						"alpn": ["h2","http/1.1"],
-						"reuse_session": true,
-						"session_ticket": false,
-						"curves": ""
-					},
-					"tcp": {
-					"no_delay": true,
-					"keep_alive": true,
-					"reuse_port": false,
-			EOF
-			if [ "${LINUX_VER}" != "26" ]; then
-				cat >> "${TROJAN_CONFIG_TEMP_SOCKS}" <<-EOF
-					"fast_open": $(get_function_switch ${ss_basic_trojan_tfo}),
-				EOF
-			else
-				cat >> "${TROJAN_CONFIG_TEMP_SOCKS}" <<-EOF
-					"fast_open": false,
-				EOF
-			fi
-			cat >> "${TROJAN_CONFIG_TEMP_SOCKS}" <<-EOF
-					"fast_open_qlen": 20
-					}
-				}
-			EOF
-			echo_date 解析trojan的client配置文件...
-			run jq --tab . ${TROJAN_CONFIG_TEMP_SOCKS} >/tmp/trojan_para_tmp.txt 2>&1
-			if [ "$?" != "0" ];then
-				echo_date "json配置解析错误，错误信息如下："
-				echo_date $(cat /tmp/trojan_para_tmp.txt) 
-				echo_date "请更正你的错误然后重试！！"
-				rm -rf /tmp/trojan_para_tmp.txt
-				close_in_five flag
-			fi
-			run jq --tab . ${TROJAN_CONFIG_TEMP_SOCKS} >${TROJAN_CONFIG_FILE_SOCKS}
-			echo_date "解析成功！trojan的client配置文件成功写入到${TROJAN_CONFIG_FILE_SOCKS}"
-
-			echo_date 测试trojan的client配置文件....
-			result=$(run /koolshare/bin/trojan -t ${TROJAN_CONFIG_FILE_SOCKS} 2>&1 | grep "The config file looks good.")
-			if [ -n "${result}" ]; then
-				echo_date 测试结果：${result}
-				echo_date trojan的client配置文件通过测试!!!
-			else
-				echo_date trojan的client配置文件没有通过测试，请检查设置!!!
-				rm -rf ${TROJAN_CONFIG_TEMP_SOCKS}
-				rm -rf ${TROJAN_CONFIG_FILE_SOCKS}
-				close_in_five flag
-			fi
 		fi
 	fi
 }
@@ -5281,9 +5249,13 @@ start_trojan(){
 		fi
 		detect_running_status xray
 	else
+		echo_date "开启ipt2socks进程，用于透明代理..."
+		run_bg ipt2socks -p 23456 -l 3333 -4 -R
+		detect_running_status2 ipt2socks 23456
+		
 		# start trojan
 		if [ "${ss_basic_mcore}" == "1" ]; then
-			echo_date trojan开启$THREAD线程支持.
+			echo_date "trojan开启$THREAD线程支持."
 			local i=1
 			while [ $i -le $THREAD ]; do
 				run_bg trojan
@@ -5291,10 +5263,6 @@ start_trojan(){
 			done
 		else
 			run_bg trojan
-		fi
-
-		if [ "${trojan_socks}" == "1" -a -f "${TROJAN_CONFIG_FILE_SOCKS}" ];then
-			run_bg trojan -c ${TROJAN_CONFIG_FILE_SOCKS}
 		fi
 	fi
 }
@@ -5311,6 +5279,62 @@ start_naive(){
 		run_bg naive --listen=socks://127.0.0.1:23456 --proxy=${ss_basic_naive_prot}://${ss_basic_naive_user}:${ss_basic_password}@${ss_basic_server_orig}:${ss_basic_naive_port}
 	fi
 	detect_running_status2 naive 23456
+}
+
+start_tuic(){
+	rm -rf /koolshare/ss/tuic.json 2>/dev/null
+	echo "${ss_basic_tuic_json}" | base64_decode >/tmp/tuic_tmp_1.json
+	local RELAY=$(cat /tmp/tuic_tmp_1.json | run jq '.relay')
+
+	echo_date "解析tuic配置文件..."
+	echo "{\"local\": {\"server\": \"127.0.0.1:23456\"},\"log_level\": \"warn\"}" | run jq --argjson args "$RELAY" '. + {relay: $args}' >/koolshare/ss/tuic.json
+
+	# 检测用户是否配置了ip地址
+	local tuic_server=$(cat /koolshare/ss/tuic.json | run jq -r '.relay.server' | awk -F ":" '{print $1}')
+	if [ -z "${tuic_server}" -o "${tuic_server}" == "null" ];then
+		echo_date "检测到你的tuic配置文件未配置服务器地址/域名，请修改配置，退出！"
+		close_in_five
+	fi
+	
+	local tuic_ip=$(cat /koolshare/ss/tuic.json | run jq -r '.relay.ip')
+	local tuic_ipaddr=$(__valid_ip ${tuic_ip})
+	if [ -z "${tuic_ipaddr}" ];then
+		echo_date "检测到你的tuic配置文件未配置ip地址，尝试解析！"
+		__resolve_server_domain "${tuic_server}"
+		case $? in
+		0)
+			echo_date "$(__get_type_abbr_name)服务器【${tuic_server}】的ip地址解析成功：${SERVER_IP}"
+			tuic_server_ip="$SERVER_IP"
+			;;
+		1)
+			# server is domain format and failed to resolve.
+			echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			echo_date "$(__get_type_abbr_name)服务器的ip地址解析失败，这将大概率导致节点无法正常工作！"
+			echo_date "请尝试在【DNS设定】- 【节点域名解析DNS服务器】处更换节点服务器的解析方案后重试！"
+			echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+			tuic_server_ip=""
+			# close_in_five flag
+			;;
+		2)
+			# server is not ip either domain!
+			echo_date "错误2！！检测到你设置的服务器:${ss_basic_server}既不是ip地址，也不是域名格式！"
+			echo_date "请更正你的错误然后重试！！"
+			close_in_five flag
+			;;
+		esac
+
+		if [ -n "${tuic_server_ip}" ];then
+			cat /koolshare/ss/tuic.json | run jq --arg addr "$tuic_server_ip" '.relay.ip = $addr' | run sponge /koolshare/ss/tuic.json
+		fi
+	fi
+	
+	echo_date "开启ipt2socks进程..."
+	run_bg ipt2socks -p 23456 -l 3333 -4 -R
+	detect_running_status2 ipt2socks 23456
+	
+	echo_date "开启tuic-client主进程..."
+	run_bg tuic-client -c /koolshare/ss/tuic.json
+	detect_running_status tuic-client
 }
 
 write_cron_job() {
@@ -6285,6 +6309,7 @@ apply_ss() {
 	[ "${ss_basic_type}" == "4" ] && start_xray
 	[ "${ss_basic_type}" == "5" ] && start_trojan
 	[ "${ss_basic_type}" == "6" ] && start_naive
+	[ "${ss_basic_type}" == "7" ] && start_tuic
 	start_kcp
 	start_dns
 	#===load nat start===

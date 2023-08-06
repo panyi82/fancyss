@@ -362,6 +362,7 @@ install_now(){
 	rm -rf /koolshare/bin/speederv2
 	rm -rf /koolshare/bin/udp2raw
 	rm -rf /koolshare/bin/trojan
+	rm -rf /koolshare/bin/tuic
 	rm -rf /koolshare/bin/xray
 	rm -rf /koolshare/bin/v2ray
 	rm -rf /koolshare/bin/v2ray-plugin
@@ -541,6 +542,9 @@ install_now(){
 	[ -z "$(dbus get ss_acl_default_mode)" ] && dbus set ss_acl_default_mode=1
 	[ -z "$(dbus get ss_acl_default_port)" ] && dbus set ss_acl_default_port=all
 	[ -z "$(dbus get ss_basic_interval)" ] && dbus set ss_basic_interval=2
+	[ -z "$(dbus get ss_basic_wt_furl)" ] && dbus set ss_basic_wt_furl="http://www.google.com.tw"
+	[ -z "$(dbus get ss_basic_wt_curl)" ] && dbus set ss_basic_wt_curl="http://www.baidu.com"
+	[ -z "${ss_basic_latency_opt}" ] && dbus set ss_basic_latency_opt="2"
 	
 	# lite
 	if [ ! -x "/tmp/shadowsocks/bin/v2ray" ];then

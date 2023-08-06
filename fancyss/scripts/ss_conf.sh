@@ -47,7 +47,7 @@ backup_tar(){
 	cp /koolshare/bin/sponge ${TARGET_FOLDER}/bin/
 	cp /koolshare/bin/jq ${TARGET_FOLDER}/bin/
 	cp /koolshare/bin/xray ${TARGET_FOLDER}/bin/
-	cp /koolshare/bin/httping ${TARGET_FOLDER}/bin/
+	cp /koolshare/bin/curl-fancyss ${TARGET_FOLDER}/bin/
 	cp /koolshare/bin/dnsclient ${TARGET_FOLDER}/bin/
 	cp /koolshare/bin/dns2tcp ${TARGET_FOLDER}/bin/
 	cp /koolshare/bin/dns-ecs-forcer ${TARGET_FOLDER}/bin/
@@ -69,6 +69,7 @@ backup_tar(){
 		cp /koolshare/bin/haveged ${TARGET_FOLDER}/bin/
 		cp /koolshare/bin/ipt2socks ${TARGET_FOLDER}/bin/
 		cp /koolshare/bin/naive ${TARGET_FOLDER}/bin/
+		cp /koolshare/bin/tuic-client ${TARGET_FOLDER}/bin/
 	fi
 	cp /koolshare/webs/Module_shadowsocks*.asp ${TARGET_FOLDER}/webs/
 	# others

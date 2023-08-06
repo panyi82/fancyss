@@ -23,10 +23,11 @@ rm -rf /koolshare/bin/speederv1
 rm -rf /koolshare/bin/speederv2
 rm -rf /koolshare/bin/udp2raw
 rm -rf /koolshare/bin/trojan
+rm -rf /koolshare/bin/tuic
 rm -rf /koolshare/bin/xray
 rm -rf /koolshare/bin/v2ray
 rm -rf /koolshare/bin/v2ray-plugin
-rm -rf /koolshare/bin/httping
+rm -rf /koolshare/bin/curl-fancyss
 rm -rf /koolshare/bin/haveged
 rm -rf /koolshare/bin/naive
 rm -rf /koolshare/bin/ipt2socks
@@ -67,6 +68,7 @@ rm -rf /koolshare/bin/pdu
 rm -rf /koolshare/bin/koolgame
 rm -rf /koolshare/bin/dnscrypt-proxy
 rm -rf /koolshare/bin/resolveip
+rm -rf /koolshare/bin/httping
 rm -rf /koolshare/res/all.png
 rm -rf /koolshare/res/gfw.png
 rm -rf /koolshare/res/chn.png
