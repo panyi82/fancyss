@@ -138,6 +138,9 @@ GET_PROXY_TOOL(){
 	7)
 		echo "tuic"
 		;;
+	8)
+		echo "hysteria2"
+		;;
 	esac
 }
 
@@ -163,6 +166,9 @@ GET_TYPE_NAME(){
 		;;
 	7)
 		echo "tuic"
+		;;
+	8)
+		echo "hysteria2"
 		;;
 	esac
 }
@@ -375,6 +381,14 @@ GET_PROG_STAT(){
 			echo "ipt2socks	运行中🟢		透明代理		${IPT2SOCKS}"
 		else
 			echo "ipt2socks	未运行🔴		透明代理"
+		fi
+	elif [ "${ss_basic_type}" == "8" ]; then
+		# tuic
+		local HY2=$(pidof hysteria2)
+		if [ -n "${HY2}" ]; then
+			echo "hysteria2	运行中🟢		透明代理		${HY2}"
+		else
+			echo "hysteria2	未运行🔴		透明代理"
 		fi
 	fi
 
@@ -942,6 +956,9 @@ ECHO_VERSION(){
 	if [ -x "/koolshare/bin/tuic-client" ];then
 		echo "tuic-client		$(run tuic-client -v|awk '{print $NF}')			https://github.com/EAimTY/tuic"
 	fi
+	if [ -x "/koolshare/bin/hysteria2" ];then
+		echo "hysteria2		$(run hysteria2 version|grep Version|awk '{print $2}')			https://github.com/apernet/hysteria"
+	fi
 	echo --------------------------------------------------------------------------------------------------------
 }
 
@@ -1006,7 +1023,12 @@ ECHO_IPTABLES(){
 
 check_status() {
 	local LINUX_VER=$(uname -r|awk -F"." '{print $1$2}')
-	local CURR_NAME=$(cat /koolshare/webs/Module_shadowsocks.asp | grep -Eo "pkg_name=.+"|grep -Eo "fancyss\w+")
+	local pkg_name=$(cat /koolshare/webs/Module_shadowsocks.asp | tr -d '\r' | grep -Eo "PKG_NAME=.+"|awk -F "=" '{print $2}'|sed 's/"//g')
+	local pkg_arch=$(cat /koolshare/webs/Module_shadowsocks.asp | tr -d '\r' | grep -Eo "PKG_ARCH=.+"|awk -F "=" '{print $2}'|sed 's/"//g')
+	local pkg_type=$(cat /koolshare/webs/Module_shadowsocks.asp | tr -d '\r' | grep -Eo "PKG_TYPE=.+"|awk -F "=" '{print $2}'|sed 's/"//g')
+	local pkg_exta=$(cat /koolshare/webs/Module_shadowsocks.asp | tr -d '\r' | grep -Eo "PKG_EXTA=.+"|awk -F "=" '{print $2}'|sed 's/"//g')
+	local pkg_vers=$(dbus get ss_basic_version_local)
+	local CURR_NAME=${pkg_name}_${pkg_arch}_${pkg_type}${pkg_exta}
 	local CURR_VERS=$(cat /koolshare/ss/version)
 	local CURR_BAKD=$(echo ${ss_wan_black_domain} | base64_decode | sed '/^#/d' | sed 's/$/\n/' | sed '/^$/d' | wc -l)
 	local CURR_BAKI=$(echo ${ss_wan_black_ip} | base64_decode | sed '/^#/d' | sed 's/$/\n/' | sed '/^$/d' | wc -l)

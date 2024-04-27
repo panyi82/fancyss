@@ -1,5 +1,43 @@
 fancyss Changelog
 ===========================================
+3.3.1  (20240302)
+   - fix	修复trojan节点无法订阅的问题
+   - update	udp代理控制，chatgpt选项新增更多的相关域名
+   - update	更新规则到最新
+   
+3.3.0  (20240229)
+   - fix	3.3.0：修复full版本手动添加任何节点都是hysteria2节点的问题
+
+3.2.8 - 3.2.9  (20240225)
+   - fix	3.2.9：修复lite版本无法手动添加节点的问题
+   - add	fancyss full添加hysteria2协议支持
+   - add	fancyss full添加hysteria2订阅支持，能在订阅的时候设定上下行带宽和 tcp fast open是否开启
+   - add	fancyss full添加hysteria2 web 延迟检测支持
+   - fix	修复当订阅链接中有空格的时候，订阅链接被切割，导致无法订阅的问题
+   - fix	修复从full版本安装成lite版本后，因部分节点lite版本不支持导致的问题
+   - update	现在节点订阅日志也走websocket通讯，避免httpd崩溃
+   - note	因新增协议支持，full版本安装包再次增加不少体积，安装请注意jffs空间，建议使用usb2jffs插件扩容jffs
+
+3.2.6 - 3.2.7 (20240205)
+   - update	安全性更新：关闭插件23456的socks5端口对外访问，以避免被人扫代和盗刷流量
+   - update	xray二进制更新到最新v1.8.7版本，go 1.21.6编译
+   - update	现在有帮助信息的文字将显示蓝色，鼠标悬浮上即可显示帮助信息
+   - update	代理服务器节点解析默认使用udp协议，且使用国内组，以避免多解析机场解析到不正确的服务器地址
+   - update	更新了fancyss的一些默认设置
+   - remove	移除使用tcp和doh对代理服务器节点进行解析
+   - remove	移除使用tcp和doh对代理服务器节点进行解析
+   - remove	因旧版本存在一定安全风险，且和新固件兼容性问题，移除了fancyss 3.0.5及其以前的历史安装包
+   - add	hnd_v8_full、mtk、qca版本新增使用websocket进行前后端通讯，将极大降低httpd崩溃频率
+   - add	【附加功能】新增New Bing模式，勾选new bing模式后，访问https://bing.com/将不会跳转到https://cn.bing.com/
+   - add	【附加功能】新增udp代理控制，可以开启gfwlist模式、大陆白名单模式、全局模式下的udp代理。
+       		udp代理控制还可以仅开启chatgpt模式（默认选项），以方便在非游戏模式下访问chatgpt页面
+   - fix	修复某些情况下，路由器公网出口IPV4地址检测不成功的问题
+   - fix	修复某些情况下，更改访问控制内主机模式保存不成功的问题
+   - fix	修复某些情况下，chinadns-ng中国DNS-2选项为空的问题
+   - fix	修复从旧版本升级后，不刷新浏览器缓存导致页面错乱的问题
+   - fix	修复升级版本后，chinadns-ng的丢弃AAAA记录开关无法保持开启的问题
+   - fix	修复fancyss_arm 3.2.6版本页面错误，不显示节点，无法点击的问题
+
 3.2.5 (20230731)
    - fix	修复使用trojan运行trojan协议节点时代理不通的问题
    - fix	修复请空插件所有配置后，再次配置节点无法进行ping和web延迟测试的问题
