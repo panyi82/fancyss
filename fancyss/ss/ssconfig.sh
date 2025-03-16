@@ -2403,7 +2403,10 @@ create_dnsmasq_conf() {
 	if [ "${ss_basic_advdns}" != "1" ]; then
 		if [ "${ss_basic_mode}" == "6" ]; then
 			# 回国模式中，因为国外DNS无论如何都不会污染的，所以采取的策略是直连就行，默认国内优先即可
-			echo_date "自动判断在回国模式中使用国内优先模式，不加载cdn.conf"
+			echo_date "自动判断在回国模式中使用国内优先模式，加载cdn.conf"
+                        echo_date "生成cdn加速列表到/tmp/cdn.conf，加速用的dns：${CDN}"
+			echo "#for china site CDN acclerate" >>/tmp/cdn.conf
+			cat /tmp/cdn.txt | sed "s/^/server=&\/./g" | sed "s/$/\/&$CDN#$DNSC_PORT/g" | sort | awk '{if ($0!=line) print;line=$0}' >>/tmp/cdn.conf
 		else
 			if [ "${ss_basic_mode}" == "1" -a -z "${chn_on}" -a -z "${all_on}" -o "${ss_basic_mode}" == "6" ]; then
 				# gfwlist模式的时候，且访问控制主机中不存在 大陆白名单模式 游戏模式 全局模式，则使用国内优先模式
