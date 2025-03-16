@@ -1970,7 +1970,7 @@ start_dns_old() {
 	# 8. direct
 	if [ "${ss_foreign_dns}" == "8" ]; then
 		if [ "${ss_basic_mode}" == "6" ]; then
-			echo_date "回国模式，国外DNS采用直连方案。"
+			echo_date "回国模式，国外DNS采用直连方案。${ss_dns2socks_user}"
    			start_dns2socks ${ss_dns2socks_user} 7913 0
 		else
 			echo_date "非回国模式，国外DNS直连解析不能使用，自动切换到dns2socks方案。"
@@ -2190,6 +2190,7 @@ create_dnsmasq_conf() {
 				if [ -n "${FO}" ];then
 					# 运营商DNS1:ISP_DNS1是中国IP
 					CDN="${ISP_DNS1}"
+     					echo_date "CDN1 is $CDN"
 				else
 					# 运营商DNS1:ISP_DNS1是国外IP或者局域网IP，直接都改为中国的
 					ss_china_dns="3"
@@ -2207,6 +2208,7 @@ create_dnsmasq_conf() {
 				if [ -n "${FO}" ];then
 					# 运营商DNS1:ISP_DNS2是中国IP
 					CDN="${ISP_DNS2}"
+     					echo_date "CDN2 is $CDN"
 				else
 					# 运营商DNS1:ISP_DNS2是国外IP或者局域网IP，直接都改为中国的
 					ss_china_dns="3"
@@ -2218,6 +2220,7 @@ create_dnsmasq_conf() {
 			fi
 		fi
 		DNSC_PORT=$(get_dns_china_port ${ss_china_dns})
+  		echo_date "DNSC_PORT is $DNSC_PORT"
 	else
 		# 出国代理模式下，CDN定义
 		if [ "${ss_basic_advdns}" != "1" ];then
@@ -2434,7 +2437,7 @@ create_dnsmasq_conf() {
 	fi
 
 	if [ -f /tmp/cdn.conf ]; then
-		#echo_date 创建cdn加速列表软链接/jffs/configs/dnsmasq.d/cdn.conf
+		echo_date 创建cdn加速列表软链接/jffs/configs/dnsmasq.d/cdn.conf
 		ln -sf /tmp/cdn.conf /jffs/configs/dnsmasq.d/cdn.conf
 	fi
 
@@ -5177,7 +5180,7 @@ restart_dnsmasq() {
 	fi
 	# Restart dnsmasq
 	echo_date "重启dnsmasq服务..."
-	service restart_dnsmasq >/dev/null 2>&1 &
+	service restart_dnsmasq #>/dev/null 2>&1 &
 	detect_running_status dnsmasq
 }
 
