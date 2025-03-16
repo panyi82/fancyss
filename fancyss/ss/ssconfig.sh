@@ -1971,6 +1971,7 @@ start_dns_old() {
 	if [ "${ss_foreign_dns}" == "8" ]; then
 		if [ "${ss_basic_mode}" == "6" ]; then
 			echo_date "回国模式，国外DNS采用直连方案。"
+   			start_dns2socks ${ss_dns2socks_user} 7913 0
 		else
 			echo_date "非回国模式，国外DNS直连解析不能使用，自动切换到dns2socks方案。"
 			dbus set ss_foreign_dns=3
