@@ -1329,7 +1329,7 @@ start_dns2socks(){
 	local addr=$1
 	local port=$2
 	local edns=$3
- 	echo_date "start dns2socks $addr:$port:$edns
+ 	echo_date "start dns2socks $addr:$port:$edns"
 	
 	killall dns2socks >/dev/null 2>&1
 
