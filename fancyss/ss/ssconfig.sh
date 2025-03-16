@@ -1329,6 +1329,7 @@ start_dns2socks(){
 	local addr=$1
 	local port=$2
 	local edns=$3
+ 	echo_date "start dns2socks $addr:$port:$edns
 	
 	killall dns2socks >/dev/null 2>&1
 
@@ -1971,7 +1972,7 @@ start_dns_old() {
 	# 8. direct
 	if [ "${ss_foreign_dns}" == "8" ]; then
 		if [ "${ss_basic_mode}" == "6" ]; then
-			echo_date "回国模式，国外DNS采用直连方案。${ss_dns2socks_user}"
+			echo_date "回国模式，国外DNS采用直连方案。${ss_china_dns_user}"
    			start_dns2socks ${ss_china_dns_user} 7913 0
 		else
 			echo_date "非回国模式，国外DNS直连解析不能使用，自动切换到dns2socks方案。"
