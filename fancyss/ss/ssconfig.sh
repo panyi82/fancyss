@@ -1972,7 +1972,7 @@ start_dns_old() {
 	# 8. direct
 	if [ "${ss_foreign_dns}" == "8" ]; then
 		if [ "${ss_basic_mode}" == "6" ]; then
-  			ss_china_dns_user = "114.114.114.114"
+  			dbus set ss_china_dns_user="114.114.114.114"
 			echo_date "回国模式，国外DNS采用直连方案。${ss_china_dns_user}"
    			start_dns2socks ${ss_china_dns_user} 7913 0
 		else
